@@ -5,6 +5,8 @@ import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.tensorflow.TensorFlowService;
 import net.imglib2.Cursor;
+import net.imglib2.Dimensions;
+import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
@@ -176,16 +178,17 @@ public class N2V implements Command {
 		long val_num_pix = 1;
 		long train_num_pix = 1;
 //        val_patch_shape = ()
-		List<Long> val_patch_shape = new ArrayList<>();
+		long[] _val_patch_shape = new long[]{XTensor.numDimensions()-2};
 		for (int i = 1; i < XTensor.shape().length - 1; i++) {
 			long n = XTensor.shape()[i];
 			val_num_pix *= validationXTensor.shape()[i];
 			train_num_pix *= XTensor.shape()[i];
-			val_patch_shape.add(validationXTensor.shape()[i]);
+			_val_patch_shape[i-1] = validationXTensor.shape()[i];
 			if (n % div_by != 0)
 				System.err.println("training images must be evenly divisible by " + div_by
 						+ "along axes XY (axis " + i + " has incompatible size " + n + ")");
 		}
+		Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
 
 		int epochs = train_epochs;
 		int steps_per_epoch = train_steps_per_epoch;
@@ -216,7 +219,7 @@ public class N2V implements Command {
 
 		N2V_DataWrapper<FloatType> training_data = new N2V_DataWrapper<>(context, X,
 				target, train_batch_size,
-				(int) (train_num_pix / 100 * n2v_perc_pix), val_patch_shape,
+				n2v_perc_pix, val_patch_shape,
 				N2V_DataWrapper::uniform_withCP);
 //        training_data = N2V_DataWrapper(X, np.concatenate((X, np.zeros(X.shape, dtype=X.dtype)), axis=axes.index('C')),
 //                                                    self.config.train_batch_size, int(train_num_pix/100 * self.config.n2v_perc_pix),

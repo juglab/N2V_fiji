@@ -1,6 +1,7 @@
 package de.csbdresden.n2v;
 
 import net.imagej.ops.OpService;
+import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
 import net.imglib2.Point;
@@ -31,8 +32,8 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	private final RandomAccessibleInterval<T> Y;
 	private final int batch_size;
 	private ArrayList<Integer> perm;
-	private final List<Long> shape;
-	private final FinalDimensions range;
+	private final Dimensions shape;
+	private final Dimensions range;
 	private final int dims;
 	private final long n_chan;
 	private final long box_size;
@@ -165,7 +166,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		return c.accept(arg2, arg3, arg4);
 	}
 
-	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, int num_pix, List<Long> shape, ValueManipulatorConsumer<T> manipulator) {
+	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, double perc_pix, Dimensions shape, ValueManipulatorConsumer<T> manipulator) {
 
 		context.inject(this);
 
@@ -174,15 +175,21 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		this.batch_size = batch_size;
 		this.perm = generateRandom((int) X.dimension(2));
 		this.shape = shape;
-		this.range = new FinalDimensions(X.dimension(0) - shape.get(0), X.dimension(1) - shape.get(1));
-		this.dims = shape.size();
+		this.range = new FinalDimensions(X.dimension(0) - shape.dimension(0), X.dimension(1) - shape.dimension(1));
+		this.dims = shape.numDimensions();
 		this.n_chan = X.dimension(3);
 
+		long multiplyShape = 1;
+		for (int i = 0; i < shape.numDimensions(); i++) {
+			multiplyShape *= shape.dimension(i);
+		}
+		int num_pix = (int) (multiplyShape / 100 * perc_pix);
+
 //            self.patch_sampler = self.__subpatch_sampling2D__
-		this.box_size = Math.round(Math.sqrt(shape.get(0) * shape.get(1) / (float)num_pix));
+		this.box_size = Math.round(Math.sqrt(shape.dimension(0) * shape.dimension(1) / (float)num_pix));
 //            self.get_stratified_coords = self.__get_stratified_coords2D__
-		this.X_Batches = opService.create().img(new FinalDimensions(shape.get(0), shape.get(1), batch_size, X.dimension(3)), X.randomAccess().get().copy());
-		this.Y_Batches = opService.create().img(new FinalDimensions(shape.get(0), shape.get(1), batch_size, Y.dimension(3)), X.randomAccess().get().copy());
+		this.X_Batches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, X.dimension(3)), X.randomAccess().get().copy());
+		this.Y_Batches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, Y.dimension(3)), X.randomAccess().get().copy());
 
 		this.manipulator = manipulator;
 	}
@@ -200,7 +207,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	}
 
 	public Pair<RandomAccessibleInterval, RandomAccessibleInterval> getItem(int i) {
-        int[] idx = new int[]{batch_size};
+        int[] idx = new int[batch_size];
 		for (int j = 0; j < idx.length; j++) {
 			idx[j] = perm.get(i * batch_size + j);
 		}
@@ -216,7 +223,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		return new Pair<>(X_Batches, Y_Batches);
 	}
 
-	static <T extends RealType<T> & NativeType<T>> void manipulateY(int j, long box_size, List<Long> shape, RandomAccessibleInterval<T> X_Batches, RandomAccessibleInterval<T> Y_Batches, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
+	static <T extends RealType<T> & NativeType<T>> void manipulateY(int j, long box_size, Dimensions shape, RandomAccessibleInterval<T> X_Batches, RandomAccessibleInterval<T> Y_Batches, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
 		int c = 0;
 		List<Point> coords = get_stratified_coords(box_size, shape);
 //                                                    shape=np.array(self.X_Batches.shape)[1:-1])
@@ -257,17 +264,17 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	}
 
 
-	private static List<Point> get_stratified_coords(long box_size, List<Long> shape) {
+	private static List<Point> get_stratified_coords(long box_size, Dimensions shape) {
 		List<Point> coords = new ArrayList<>();
-		int box_count_x = (int) Math.ceil(shape.get(0) / box_size);
-		int box_count_y = (int) Math.ceil(shape.get(1) / box_size);
+		int box_count_x = (int) Math.ceil(shape.dimension(0) / box_size);
+		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
 				Point p = new Point((long)Math.random() * box_size, (long)Math.random() * box_size, 0);
 //                y, x = next(coord_gen)
 				p.setPosition(i * box_size + p.getIntPosition(0), 0);
 				p.setPosition(j * box_size + p.getIntPosition(1), 1);
-				if (p.getIntPosition(0) < shape.get(0) && p.getIntPosition(1) < shape.get(1)) {
+				if (p.getIntPosition(0) < shape.dimension(0) && p.getIntPosition(1) < shape.dimension(1)) {
 					coords.add(p);
 				}
 			}
@@ -320,11 +327,11 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		    setBatch(X_Batches, i, X,
 				    new FinalInterval(
 						    new long[]{x_start, y_start, j, 0},
-						    new long[]{x_start + shape.get(0), y_start + shape.get(1), j, 0}));
+						    new long[]{x_start + shape.dimension(0), y_start + shape.dimension(1), j, 0}));
 		    setBatch(Y_Batches, i, Y,
 				    new FinalInterval(
 						    new long[]{x_start, y_start, j, 0},
-						    new long[]{x_start + shape.get(0), y_start + shape.get(1), j, 0}));
+						    new long[]{x_start + shape.dimension(0), y_start + shape.dimension(1), j, 0}));
 //	    Y_Batches[j] = Y[j, y_start:y_start + shape[0], x_start:x_start + shape[1]]
 	    }
     }

@@ -1,11 +1,10 @@
 package de.csbdresden.n2v;
 
+import net.imglib2.Dimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.apache.commons.lang3.NotImplementedException;
-
-import java.util.List;
 
 
 //manipulator:
@@ -21,8 +20,8 @@ import java.util.List;
 
 public class N2VUtils {
 	private static int n2v_neighborhood_radius = 5;
-	public static void manipulate_val_data(RandomAccessibleInterval<FloatType> X_val, RandomAccessibleInterval Y_val, double perc_pix, List<Long> shape) {
-		int dims = shape.size();
+	public static void manipulate_val_data(RandomAccessibleInterval<FloatType> X_val, RandomAccessibleInterval Y_val, double perc_pix, Dimensions shape) {
+		int dims = shape.numDimensions();
 		long box_size;
 		if(dims == 2) {
 			box_size = Math.round(Math.sqrt(100./perc_pix));
