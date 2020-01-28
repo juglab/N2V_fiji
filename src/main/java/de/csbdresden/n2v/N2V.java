@@ -216,7 +216,8 @@ public class N2V implements Command {
 
 		N2V_DataWrapper<FloatType> training_data = new N2V_DataWrapper<>(context, X,
 				target, train_batch_size,
-				(int) (train_num_pix / 100 * n2v_perc_pix), val_patch_shape);
+				(int) (train_num_pix / 100 * n2v_perc_pix), val_patch_shape,
+				N2V_DataWrapper::uniform_withCP);
 //        training_data = N2V_DataWrapper(X, np.concatenate((X, np.zeros(X.shape, dtype=X.dtype)), axis=axes.index('C')),
 //                                                    self.config.train_batch_size, int(train_num_pix/100 * self.config.n2v_perc_pix),
 //                                                    self.config.n2v_patch_shape, manipulator)

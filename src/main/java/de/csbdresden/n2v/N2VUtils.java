@@ -32,7 +32,7 @@ public class N2VUtils {
 		long n_chan = X_val.dimension(X_val.numDimensions()-1);
 		Views.iterable(X_val).forEach(val -> val.set(0));
 		for (int j = 0; j < X_val.dimension(dims); j++) {
-			N2V_DataWrapper.manipulateY(j, box_size, shape, X_val, Y_val, dims, n_chan);
+			N2V_DataWrapper.manipulateY(j, box_size, shape, X_val, Y_val, dims, n_chan, N2V_DataWrapper::uniform_withCP);
 		}
 	}
 

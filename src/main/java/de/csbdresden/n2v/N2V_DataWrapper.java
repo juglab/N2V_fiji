@@ -37,6 +37,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	private final long n_chan;
 	private final long box_size;
 	private static int local_sub_patch_radius = 5;
+	private final ValueManipulatorConsumer<T> manipulator;
 
 	//
 //	    """
@@ -154,7 +155,17 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 //        while True:
 //            yield (np.random.rand() * boxsize, np.random.rand() * boxsize)
 //
-	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, int num_pix, List<Long> shape) {
+
+	interface ValueManipulatorConsumer<U> {
+		double accept(IntervalView<U> u, Point v, int w);
+	}
+
+	private static <T> double value_manipulate(
+			ValueManipulatorConsumer<T> c, IntervalView<T> arg2, Point arg3, int arg4) {
+		return c.accept(arg2, arg3, arg4);
+	}
+
+	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, int num_pix, List<Long> shape, ValueManipulatorConsumer<T> manipulator) {
 
 		context.inject(this);
 
@@ -172,6 +183,8 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 //            self.get_stratified_coords = self.__get_stratified_coords2D__
 		this.X_Batches = opService.create().img(new FinalDimensions(shape.get(0), shape.get(1), batch_size, X.dimension(3)), X.randomAccess().get().copy());
 		this.Y_Batches = opService.create().img(new FinalDimensions(shape.get(0), shape.get(1), batch_size, Y.dimension(3)), X.randomAccess().get().copy());
+
+		this.manipulator = manipulator;
 	}
 
 	public int len() {
@@ -196,14 +209,14 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		for (int j = 0; j < idx.length; j++) {
 //            for c in range(self.n_chan):
 
-			manipulateY(j, box_size, shape, X_Batches, Y_Batches, dims, n_chan);
+			manipulateY(j, box_size, shape, X_Batches, Y_Batches, dims, n_chan, manipulator);
 		}
 		//TODO the current return value seems wrong
 		//self.X_Batches[idx], self.Y_Batches[idx]
 		return new Pair<>(X_Batches, Y_Batches);
 	}
 
-	static <T extends RealType<T> & NativeType<T>> void manipulateY(int j, long box_size, List<Long> shape, RandomAccessibleInterval<T> X_Batches, RandomAccessibleInterval<T> Y_Batches, int dims, long n_chan) {
+	static <T extends RealType<T> & NativeType<T>> void manipulateY(int j, long box_size, List<Long> shape, RandomAccessibleInterval<T> X_Batches, RandomAccessibleInterval<T> Y_Batches, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
 		int c = 0;
 		List<Point> coords = get_stratified_coords(box_size, shape);
 //                                                    shape=np.array(self.X_Batches.shape)[1:-1])
@@ -218,7 +231,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 			IntervalView<T> XInterval = Views.hyperSlice(X_Batches, 2, j);
 			XInterval = Views.hyperSlice(XInterval, 2, c);
 			XInterval = Views.addDimension(XInterval, 0, 0);
-			x_val[k] = value_manipulation(XInterval, coords.get(k), dims);
+			x_val[k] = value_manipulate(manipulator, XInterval, coords.get(k), dims);
 			batchYRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c});
 //                    y_val.append(np.copy(self.Y_Batches[(j, *coords[k], ..., c)]))
 //                    x_val.append(self.value_manipulation(self.X_Batches[j, ..., c][...,np.newaxis], coords[k], self.dims))
@@ -262,7 +275,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		return coords;
 	}
 
-	private static <T extends RealType<T> & NativeType<T>> double value_manipulation(IntervalView<T> patch, Point coord, int dims) {
+	public static <T extends RealType<T> & NativeType<T>> double uniform_withCP(IntervalView<T> patch, Point coord, int dims) {
 		IntervalView<T> sub_patch = get_subpatch(patch, coord, local_sub_patch_radius);
 		Point rand_coord = new Point(coord.numDimensions());
 		for (int i = 0; i < dims; i++) {
