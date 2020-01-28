@@ -178,7 +178,7 @@ public class N2V implements Command {
 		long val_num_pix = 1;
 		long train_num_pix = 1;
 //        val_patch_shape = ()
-		long[] _val_patch_shape = new long[]{XTensor.numDimensions()-2};
+		long[] _val_patch_shape = new long[XTensor.numDimensions()-2];
 		for (int i = 1; i < XTensor.shape().length - 1; i++) {
 			long n = XTensor.shape()[i];
 			val_num_pix *= validationXTensor.shape()[i];
