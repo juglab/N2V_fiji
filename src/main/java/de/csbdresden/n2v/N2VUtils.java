@@ -20,7 +20,7 @@ import org.apache.commons.lang3.NotImplementedException;
 
 public class N2VUtils {
 	private static int n2v_neighborhood_radius = 5;
-	public static void manipulate_val_data(RandomAccessibleInterval<FloatType> X_val, RandomAccessibleInterval Y_val, double perc_pix, Dimensions shape) {
+	public static void manipulate_val_data(RandomAccessibleInterval<FloatType> X_val, RandomAccessibleInterval<FloatType> Y_val, double perc_pix, Dimensions shape) {
 		int dims = shape.numDimensions();
 		long box_size;
 		if(dims == 2) {
@@ -29,7 +29,7 @@ public class N2VUtils {
 			throw new NotImplementedException("manipulate_val_data not implemented for dim>2");
 		}
 		long n_chan = X_val.dimension(X_val.numDimensions()-1);
-		Views.iterable(X_val).forEach(val -> val.set(0));
+		Views.iterable(Y_val).forEach(val -> val.set(0));
 		for (int j = 0; j < X_val.dimension(dims); j++) {
 			N2V_DataWrapper.manipulateY(j, box_size, shape, X_val, Y_val, dims, n_chan, N2V_DataWrapper::uniform_withCP);
 		}
