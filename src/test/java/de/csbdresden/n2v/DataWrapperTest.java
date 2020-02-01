@@ -26,8 +26,7 @@ public class DataWrapperTest {
 		ImageJ ij = new ImageJ();
 		_getitem2D(ij, new FinalInterval(32, 32, 4, 2));
 		_getitem2D(ij, new FinalInterval(64, 64, 4, 2));
-		//TODO make work
-//		_getitem2D(ij, new FinalInterval(44, 55, 4, 2));
+		_getitem2D(ij, new FinalInterval(44, 55, 4, 2));
 		//TODO make multiple channels work
 //		_getitem2D(ij, new FinalInterval(45, 41, 4, 4));
 	}

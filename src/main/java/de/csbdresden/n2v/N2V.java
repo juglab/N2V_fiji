@@ -343,7 +343,7 @@ public class N2V implements Command {
 				.fetch(predictionTargetOpName)
 				.run().get(0);
 		output = DatasetTensorFlowConverter.tensorToDataset(outputTensor, new FloatType(), mapping, false);
-		output = Views.interval(inputRAI, new long[]{0, 0}, new long[]{dimX, dimY});
+		output = Views.interval(inputRAI, new long[]{0, 0}, new long[]{dimX-1, dimY-1});
 	}
 
 	private List<String> loadGraph(Graph graph) {
