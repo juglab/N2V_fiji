@@ -15,6 +15,7 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
+import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.ItemIO;
@@ -32,6 +33,7 @@ import org.tensorflow.Tensors;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -52,17 +54,17 @@ public class N2V implements Command {
 	@Parameter(type = ItemIO.OUTPUT)
 	private RandomAccessibleInterval<FloatType> output;
 
-	@Parameter
+//	@Parameter
 	private boolean useDefaultGraph = true;
 
-	@Parameter(required = false)
+//	@Parameter(required = false)
 	private File graphDefFile;
 
 	@Parameter
 	private int train_epochs = 10;
 
-	@Parameter
-	int train_steps_per_epoch = 20;
+//	@Parameter
+//	int train_steps_per_epoch = 20;
 
 	@Parameter
 	private TensorFlowService tensorFlowService;
@@ -97,7 +99,6 @@ public class N2V implements Command {
 	@Override
 	public void run() {
 
-
 		System.out.println("Load TensorFlow");
 		tensorFlowService.loadLibrary();
 		System.out.println(tensorFlowService.getStatus().getInfo());
@@ -106,7 +107,7 @@ public class N2V implements Command {
 		try (Graph graph = new Graph();
 		     Session sess = new Session(graph)) {
 
-			locateGraphDefFile();
+//			locateGraphDefFile();
 			loadGraph(graph);
 
 //			if(saveCheckpoints) {
@@ -322,20 +323,22 @@ public class N2V implements Command {
 				.fetch(predictionTargetOpName)
 				.run().get(0);
 		output = DatasetTensorFlowConverter.tensorToDataset(outputTensor, new FloatType(), mapping, false);
+		output = Views.interval(inputRAI, new long[]{0, 0}, new long[]{dimX, dimY});
 	}
 
 	private List<String> loadGraph(Graph graph) {
 		System.out.println("Import graph..");
 		byte[] graphDef = new byte[0];
 		try {
-			graphDef = Files.readAllBytes(graphDefFile.toPath());
+			graphDef = IOUtils.toByteArray(getClass().getResourceAsStream("/graph.pb"));
+//			graphDef = Files.readAllBytes(graphDefFile.toPath());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		graph.importGraphDef(graphDef);
 		Operation opTrain = graph.operation(trainingTargetOpName);
 		if(opTrain == null) throw new RuntimeException("Training op not found");
-		System.out.println(opTrain);
+//		System.out.println(opTrain);
 
 //		if(saveCheckpoints) {
 			final String checkpointDir = "n2v-checkpoint";
@@ -394,7 +397,7 @@ public class N2V implements Command {
 
 //		File graphDefFile = new File("/home/random/Development/imagej/project/CSBDeep/N2V/test-graph.pb");
 
-		final File trainingImgFile = new File(N2V.class.getResource("/train.tif").toURI());
+		final File trainingImgFile = new File("/home/random/Development/imagej/project/CSBDeep/train.tif");
 
 		if (trainingImgFile.exists()) {
 			RandomAccessibleInterval _input = (RandomAccessibleInterval) ij.io().open(trainingImgFile.getAbsolutePath());
@@ -406,7 +409,7 @@ public class N2V implements Command {
 			RandomAccessibleInterval prediction = ij.op().copy().rai(_inputConverted);
 
 			CommandModule plugin = ij.command().run(N2V.class, false,
-					"training", inputs, "prediction", prediction, "useDefaultGraph", true/*, "graphDefFile", graphDefFile*/).get();
+					"training", inputs, "prediction", prediction/*, "useDefaultGraph", true, "graphDefFile", graphDefFile*/).get();
 			ij.ui().show(plugin.getOutput("output"));
 		}
 
