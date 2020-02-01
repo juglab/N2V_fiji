@@ -226,9 +226,12 @@ public class N2V implements Command {
 		//TODO GUI - show progress bar indicating the current epoch (i, epochs)
 		//TODO GUI - show progress bar indicating the step of the current epoch (j, steps_per_epoch)
 		//TODO GUI - show plot to display loss (later we might add validation, but this is not yet calculated at all)
+		//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 		//TODO GUI - add footer with buttons to cancel command and to stop training
 
 		for (int i = 0; i < epochs; i++) {
+
+			System.out.println("\nEpoch " + (i+1) + "/" + epochs + "\n");
 
 			float loss;
 
@@ -262,7 +265,7 @@ public class N2V implements Command {
 				float abs = fetchedTensors.get(1).floatValue();
 				float mse = fetchedTensors.get(2).floatValue();
 
-				progressPercentage(i+1, epochs, j+1, steps_per_epoch, loss, abs, mse);
+				progressPercentage(j+1, steps_per_epoch, loss, abs, mse);
 
 				//TODO GUI - update progress bar indicating the step of the current epoch
 				index++;
@@ -279,7 +282,7 @@ public class N2V implements Command {
 		uiService.show("targets", Views.stack(targets));
 	}
 
-	public static void progressPercentage(int epoch, int epochTotal, int step, int stepTotal, float loss, float abs, float mse) {
+	public static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ((100 * step) / stepTotal) / maxBareSize;
 		char defaultChar = '-';
@@ -291,7 +294,7 @@ public class N2V implements Command {
 			bareDone.append(icon);
 		}
 		String bareRemain = bare.substring(remainProcent);
-		System.out.print(epoch + "/" + epochTotal + " " + bareDone + bareRemain + " - loss: " + loss + " - mse: " + mse + " - abs: " + abs);
+		System.out.print(step + "/" + stepTotal + " \t" + bareDone + bareRemain + " - loss: " + loss + " \tmse: " + mse + " \tabs: " + abs);
 		System.out.print("\n");
 	}
 
