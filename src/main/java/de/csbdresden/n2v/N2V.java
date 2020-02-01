@@ -99,6 +99,8 @@ public class N2V implements Command {
 	@Override
 	public void run() {
 
+		//TODO GUI open window for status, indicate that preprocessing is starting
+
 		System.out.println("Load TensorFlow");
 		tensorFlowService.loadLibrary();
 		System.out.println(tensorFlowService.getStatus().getInfo());
@@ -133,6 +135,8 @@ public class N2V implements Command {
 			}
 
 			train(sess, X, validationX);
+
+			//TODO GUI - indicate training is done, indicate prediction calculation is starting
 
 			runPrediction(prediction, sess, mapping);
 
@@ -218,7 +222,16 @@ public class N2V implements Command {
 		}
 		Tensor<Float> tensorWeights = Tensors.create(weightsdata);
 
+		//TODO GUI - indicate that training is starting
+		//TODO GUI - show progress bar indicating the current epoch (i, epochs)
+		//TODO GUI - show progress bar indicating the step of the current epoch (j, steps_per_epoch)
+		//TODO GUI - show plot to display loss (later we might add validation, but this is not yet calculated at all)
+		//TODO GUI - add footer with buttons to cancel command and to stop training
+
 		for (int i = 0; i < epochs; i++) {
+
+			float loss;
+
 			for (int j = 0; j < steps_per_epoch; j++) {
 
 				if(index*train_batch_size + train_batch_size > n_train-1) {
@@ -245,17 +258,21 @@ public class N2V implements Command {
 				runner.fetch("metrics/n2v_mse/Mean");
 
 				List<Tensor<?>> fetchedTensors = runner.run();
+				loss = fetchedTensors.get(0).floatValue();
 				float abs = fetchedTensors.get(1).floatValue();
-				float loss = fetchedTensors.get(0).floatValue();
 				float mse = fetchedTensors.get(2).floatValue();
+
 				progressPercentage(i+1, epochs, j+1, steps_per_epoch, loss, abs, mse);
 
+				//TODO GUI - update progress bar indicating the step of the current epoch
 				index++;
 			}
 			training_data.on_epoch_end();
 			if(saveCheckpoints) {
 				sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 			}
+			//TODO GUI - update plot to display loss
+			//TODO GUI - update progress bar indicating the current epoch
 		}
 
 		uiService.show("inputs", Views.stack(inputs));
