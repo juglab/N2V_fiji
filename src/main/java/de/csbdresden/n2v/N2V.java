@@ -59,6 +59,12 @@ public class N2V implements Command {
 	private File graphDefFile;
 
 	@Parameter
+	private int train_epochs = 10;
+
+	@Parameter
+	int train_steps_per_epoch = 20;
+
+	@Parameter
 	private TensorFlowService tensorFlowService;
 
 	@Parameter
@@ -86,7 +92,7 @@ public class N2V implements Command {
 	private FloatType stdDev;
 
 	//TODO make work, almost there
-	private boolean saveCheckpoints = false;
+	private boolean saveCheckpoints = true;
 
 	@Override
 	public void run() {
@@ -147,14 +153,6 @@ public class N2V implements Command {
 		RandomAccessibleInterval<FloatType> X = Views.concatenate(2, _X);
 		RandomAccessibleInterval<FloatType> validationX = Views.concatenate(2, _validationX);
 
-		mean = new FloatType();
-		mean.set(opService.stats().mean(Views.iterable(X)).getRealFloat());
-		stdDev = new FloatType();
-		stdDev.set(opService.stats().stdDev(Views.iterable(validationX)).getRealFloat());
-
-		normalize(X, mean, stdDev);
-		normalize(validationX, mean, stdDev);
-
 		uiService.show("X", X);
 //		uiService.show("validationX", validationX);
 
@@ -162,9 +160,7 @@ public class N2V implements Command {
 		Tensor validationXTensor = DatasetTensorFlowConverter.datasetToTensor(validationX, mapping);
 
 		int unet_n_depth = 2;
-		int train_epochs = 5;
-		int train_steps_per_epoch = 5;
-		int train_batch_size = 16;
+		int train_batch_size = 64;
 		double n2v_perc_pix = 1.6;
 
 		int n_train = _X.size();
@@ -195,7 +191,8 @@ public class N2V implements Command {
 		Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
 
 		int epochs = train_epochs;
-		int steps_per_epoch = train_steps_per_epoch;
+//		int steps_per_epoch = train_steps_per_epoch;
+		int steps_per_epoch = n_train/train_batch_size;
 		long[] targetDims = Intervals.dimensionsAsLongArray(X);
 		targetDims[targetDims.length - 1]++;
 
@@ -223,6 +220,11 @@ public class N2V implements Command {
 		for (int i = 0; i < epochs; i++) {
 			for (int j = 0; j < steps_per_epoch; j++) {
 
+				if(index*train_batch_size + train_batch_size > n_train-1) {
+					index = 0;
+					System.out.println("starting with index 0 of training batches");
+				}
+
 				Pair<RandomAccessibleInterval, RandomAccessibleInterval> item = training_data.getItem(index);
 				inputs.add(item.getFirst());
 				targets.add(item.getSecond());
@@ -242,9 +244,10 @@ public class N2V implements Command {
 				runner.fetch("metrics/n2v_mse/Mean");
 
 				List<Tensor<?>> fetchedTensors = runner.run();
-				System.out.println("loss: " + fetchedTensors.get(0).floatValue());
-				System.out.println("n2v abs mean: " + fetchedTensors.get(1).floatValue());
-				System.out.println("n2v mse mean: " + fetchedTensors.get(2).floatValue());
+				float abs = fetchedTensors.get(1).floatValue();
+				float loss = fetchedTensors.get(0).floatValue();
+				float mse = fetchedTensors.get(2).floatValue();
+				progressPercentage(i+1, epochs, j+1, steps_per_epoch, loss, abs, mse);
 
 				index++;
 			}
@@ -256,6 +259,22 @@ public class N2V implements Command {
 
 		uiService.show("inputs", Views.stack(inputs));
 		uiService.show("targets", Views.stack(targets));
+	}
+
+	public static void progressPercentage(int epoch, int epochTotal, int step, int stepTotal, float loss, float abs, float mse) {
+		int maxBareSize = 10; // 10unit for 100%
+		int remainProcent = ((100 * step) / stepTotal) / maxBareSize;
+		char defaultChar = '-';
+		String icon = "*";
+		String bare = new String(new char[maxBareSize]).replace('\0', defaultChar) + "]";
+		StringBuilder bareDone = new StringBuilder();
+		bareDone.append("[");
+		for (int i = 0; i < remainProcent; i++) {
+			bareDone.append(icon);
+		}
+		String bareRemain = bare.substring(remainProcent);
+		System.out.print(epoch + "/" + epochTotal + " " + bareDone + bareRemain + " - loss: " + loss + " - mse: " + mse + " - abs: " + abs);
+		System.out.print("\n");
 	}
 
 	private Img<FloatType> makeTarget(RandomAccessibleInterval<FloatType> X, long[] targetDims) {
@@ -271,20 +290,29 @@ public class N2V implements Command {
 	}
 
 	private List<RandomAccessibleInterval<FloatType>> createTiles(List<RandomAccessibleInterval<FloatType>> training) {
+		mean = new FloatType();
+		mean.set(opService.stats().mean(Views.iterable(training.get(0))).getRealFloat());
+		stdDev = new FloatType();
+		stdDev.set(opService.stats().stdDev(Views.iterable(training.get(0))).getRealFloat());
+
 		List<RandomAccessibleInterval<FloatType>> tiles = new ArrayList<>();
 		for (RandomAccessibleInterval<FloatType> trainingImg : training) {
-			tiles.addAll(createTiles(trainingImg));
+			tiles.addAll(createTiles(normalized(trainingImg, mean, stdDev)));
 		}
 		return tiles;
 	}
 
 	private void runPrediction(RandomAccessibleInterval<FloatType> inputRAI, Session sess, int[] mapping) {
 //		RandomAccessibleInterval predictionInput = inputRAI;
-		RandomAccessibleInterval predictionInput = Views.interval(inputRAI, new long[]{0, 0}, new long[]{1687, 2495});
+		long dimX = inputRAI.dimension(0);
+		long dimY = inputRAI.dimension(1);
+		long x_new = dimX - (dimX % 8) + 8;
+		long y_new = dimY - (dimY % 8) + 8;
+		RandomAccessibleInterval predictionInput = Views.interval(Views.extendZero(inputRAI), new long[]{0, 0}, new long[]{x_new-1, y_new-1});
 		predictionInput = Views.addDimension(predictionInput, 0, 0);
 		predictionInput = Views.addDimension(predictionInput, 0, 0);
 
-		normalize(predictionInput, mean, stdDev);
+		predictionInput = normalized(predictionInput, mean, stdDev);
 
 		Tensor inputTensor = DatasetTensorFlowConverter.datasetToTensor(predictionInput, mapping);
 
@@ -310,7 +338,7 @@ public class N2V implements Command {
 		System.out.println(opTrain);
 
 //		if(saveCheckpoints) {
-			final String checkpointDir = "n2v-checkpoints-" + new Date().toString();
+			final String checkpointDir = "n2v-checkpoint";
 			checkpointExists = Files.exists(Paths.get(checkpointDir));
 			checkpointPrefix =
 					Tensors.create(Paths.get(checkpointDir, "ckpt").toString());
@@ -344,7 +372,7 @@ public class N2V implements Command {
 		return tiles;
 	}
 
-	private void normalize(RandomAccessibleInterval<FloatType> input, FloatType mean, FloatType stdDev) {
+	private RandomAccessibleInterval<FloatType> normalized(RandomAccessibleInterval<FloatType> input, FloatType mean, FloatType stdDev) {
 //		Img<FloatType> rai = opService.create().img(input);
 //		LoopBuilder.setImages( rai, input ).forEachPixel( ( res, in ) -> {
 //			res.set(in);
@@ -353,8 +381,7 @@ public class N2V implements Command {
 //
 //		} );
 		IterableInterval<FloatType> rai = opService.math().subtract(Views.iterable(input), mean);
-		rai = opService.math().divide(rai, stdDev);
-		opService.copy().iterableInterval(Views.iterable(input), rai);
+		return (RandomAccessibleInterval<FloatType>) opService.math().divide(rai, stdDev);
 	}
 
 	public static void main(final String... args) throws Exception {

@@ -93,7 +93,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	}
 
 	public Pair<RandomAccessibleInterval, RandomAccessibleInterval> getItem(int i) {
-		System.out.println("------------- item " + i);
+//		System.out.println("------------- item " + i);
         int[] idx = new int[batch_size];
 		for (int j = 0; j < idx.length; j++) {
 			idx[j] = perm.get(i * batch_size + j);
@@ -161,7 +161,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
-				Point p = new Point((long)Math.random() * box_size, (long)Math.random() * box_size, 0);
+				Point p = new Point((long)(Math.random() * box_size), (long)(Math.random() * box_size), 0);
 //                y, x = next(coord_gen)
 				p.setPosition(i * box_size + p.getIntPosition(0), 0);
 				p.setPosition(j * box_size + p.getIntPosition(1), 1);

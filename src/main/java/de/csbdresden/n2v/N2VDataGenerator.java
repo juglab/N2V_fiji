@@ -7,6 +7,7 @@ import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class N2VDataGenerator {
@@ -32,7 +33,7 @@ public class N2VDataGenerator {
 			augmentPatches(patches);
 		}
 
-//		Collections.shuffle(patches);
+		Collections.shuffle(patches);
 
 		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
 		patches.forEach(patch -> {
@@ -78,8 +79,8 @@ public class N2VDataGenerator {
 		});
 		patches.addAll(augmented);
 		augmented.clear();
-//		patches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
-//		patches.addAll(augmented);
+		patches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
+		patches.addAll(augmented);
 	}
 
 }
