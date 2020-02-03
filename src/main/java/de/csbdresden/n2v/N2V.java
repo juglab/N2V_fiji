@@ -290,8 +290,8 @@ public class N2V implements Command {
 
 		System.out.println("Training done.");
 
-		uiService.show("inputs", Views.stack(inputs));
-		uiService.show("targets", Views.stack(targets));
+		if(inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
+		if(targets.size() > 0) uiService.show("targets", Views.stack(targets));
 	}
 
 	public static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse) {
