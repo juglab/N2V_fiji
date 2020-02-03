@@ -216,7 +216,7 @@ public class N2V implements Command {
 		int index = 0;
 		List<RandomAccessibleInterval<FloatType>> inputs = new ArrayList<>();
 		List<RandomAccessibleInterval<FloatType>> targets = new ArrayList<>();
-		float[] weightsdata = new float[64];
+		float[] weightsdata = new float[train_batch_size];
 		for (int i1 = 0; i1 < weightsdata.length; i1++) {
 			weightsdata[i1] = 1;
 		}
@@ -324,7 +324,6 @@ public class N2V implements Command {
 	}
 
 	private void runPrediction(RandomAccessibleInterval<FloatType> inputRAI, Session sess, int[] mapping) {
-//		RandomAccessibleInterval predictionInput = inputRAI;
 		long dimX = inputRAI.dimension(0);
 		long dimY = inputRAI.dimension(1);
 		long x_new = dimX - (dimX % 8) + 8;
@@ -358,7 +357,6 @@ public class N2V implements Command {
 		graph.importGraphDef(graphDef);
 		Operation opTrain = graph.operation(trainingTargetOpName);
 		if(opTrain == null) throw new RuntimeException("Training op not found");
-//		System.out.println(opTrain);
 
 //		if(saveCheckpoints) {
 			final String checkpointDir = "n2v-checkpoint";

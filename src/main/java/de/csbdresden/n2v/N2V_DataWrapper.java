@@ -10,16 +10,13 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.plugin.Parameter;
-import org.scijava.ui.UIService;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -44,12 +41,12 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 	private final ValueManipulatorConsumer<T> manipulator;
 
 	interface ValueManipulatorConsumer<U> {
-		double accept(IntervalView<U> u, Point v, int w);
+		double accept(IntervalView<U> patch, Point coord, int dims);
 	}
 
 	private static <T> double value_manipulate(
-			ValueManipulatorConsumer<T> c, IntervalView<T> arg2, Point arg3, int arg4) {
-		return c.accept(arg2, arg3, arg4);
+			ValueManipulatorConsumer<T> c, IntervalView<T> patch, Point coord, int dims) {
+		return c.accept(patch, coord, dims);
 	}
 
 	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, double perc_pix, Dimensions shape, ValueManipulatorConsumer<T> manipulator) {
@@ -69,7 +66,10 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		for (int i = 0; i < shape.numDimensions(); i++) {
 			multiplyShape *= shape.dimension(i);
 		}
-		int num_pix = (int) (multiplyShape / 100 * perc_pix);
+		int num_pix = (int) ((float)multiplyShape / 100. * perc_pix);
+
+//		num_pix = int(np.product(shape)/100.0 * perc_pix)
+		System.out.println(num_pix + " blind-spots will be generated per training patch of size " + shape + ".");
 
 //            self.patch_sampler = self.__subpatch_sampling2D__
 		this.box_size = Math.round(Math.sqrt(shape.dimension(0) * shape.dimension(1) / (float)num_pix));
@@ -100,6 +100,11 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		}
         subpatch_sampling2D(idx);
 
+		perm = generateRandom((int) X.dimension(2));
+		T zero = X_Batches.randomAccess().get().copy();
+		zero.setZero();
+		opService.math().multiply((RandomAccessibleInterval<T>) Y_Batches, Y_Batches, zero);
+
 //		opService.context().getService(UIService.class).show("x batches", X_Batches);
 
 		for (int j = 0; j < idx.length; j++) {
@@ -124,32 +129,30 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		RandomAccess<T> batchXRA = X_Batches.randomAccess();
 		RandomAccess<T> batchYRA = Y_Batches.randomAccess();
 		for (int k = 0; k < coords.size(); k++) {
-			batchXRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c});
+
+			long xpos = coords.get(k).getLongPosition(0);
+			long ypos = coords.get(k).getLongPosition(1);
+
+			batchXRA.setPosition(new long[]{xpos, ypos, j, c});
 			y_val[k] = batchXRA.get().getRealDouble();
+
 			IntervalView<T> XInterval = Views.hyperSlice(X_Batches, 2, j);
 			XInterval = Views.hyperSlice(XInterval, 2, c);
 			XInterval = Views.addDimension(XInterval, 0, 0);
 			x_val[k] = value_manipulate(manipulator, XInterval, coords.get(k), dims);
-			batchYRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c});
-//                    y_val.append(np.copy(self.Y_Batches[(j, *coords[k], ..., c)]))
-//                    x_val.append(self.value_manipulation(self.X_Batches[j, ..., c][...,np.newaxis], coords[k], self.dims))
 		}
 
-		//self.Y_Batches[indexing] = y_val
 		for (int k = 0; k < y_val.length; k++) {
-			batchYRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c});
+			long xpos = coords.get(k).getLongPosition(0);
+			long ypos = coords.get(k).getLongPosition(1);
+
+			batchYRA.setPosition(new long[]{xpos, ypos, j, c});
 			batchYRA.get().setReal(y_val[k]);
-		}
 
-//			self.Y_Batches[indexing_mask] = 1
-		for (int k = 0; k < y_val.length; k++) {
-			batchYRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c+n_chan});
+			batchYRA.setPosition(new long[]{xpos, ypos, j, c+n_chan});
 			batchYRA.get().setOne();
-		}
 
-//			self.X_Batches[indexing] = x_val
-		for (int k = 0; k < x_val.length; k++) {
-			batchXRA.setPosition(new long[]{coords.get(k).getLongPosition(0), coords.get(k).getLongPosition(1), j, c});
+			batchXRA.setPosition(new long[]{xpos, ypos, j, c});
 			batchXRA.get().setReal(x_val[k]);
 		}
 	}
