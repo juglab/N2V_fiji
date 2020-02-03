@@ -237,9 +237,11 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 //		System.out.println("source: " + Arrays.toString(Intervals.dimensionsAsIntArray(source)));
 //		System.out.println("interval: " + Arrays.toString(Intervals.dimensionsAsIntArray(interval)));
 		for (long i = interval.min(0); i < interval.max(0); i++) {
-			for (long j = interval.min(0); j < interval.max(1); j++) {
+			for (long j = interval.min(1); j < interval.max(1); j++) {
 				long[] positionBatch = {i-interval.min(0), j-interval.min(1), numBatch, 0};
 				long[] positionSource = {i, j, numBatch, 0};
+//				System.out.println("pos batch: " + Arrays.toString(positionBatch));
+//				System.out.println("pos source: " + Arrays.toString(positionSource));
 				ra.setPosition(positionBatch);
 				raSource.setPosition(positionSource);
 				ra.get().set(raSource.get());
