@@ -445,12 +445,11 @@ public class N2V implements Command {
 			RandomAccessibleInterval _inputConverted = ij.op().convert().float32(Views.iterable(_input));
 //			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
 
-			List<RandomAccessibleInterval<FloatType>> inputs = new ArrayList<>();
-			inputs.add(ij.op().copy().rai(_inputConverted));
-			RandomAccessibleInterval prediction = ij.op().copy().rai(_inputConverted);
+			RandomAccessibleInterval training = ij.op().copy().rai(_inputConverted);
+			RandomAccessibleInterval prediction = training;
 
 			CommandModule plugin = ij.command().run(N2V.class, false,
-					"training", inputs, "prediction", prediction/*, "useDefaultGraph", true, "graphDefFile", graphDefFile*/).get();
+					"training", training, "prediction", prediction/*, "useDefaultGraph", true, "graphDefFile", graphDefFile*/).get();
 			ij.ui().show(plugin.getOutput("output"));
 		}
 
