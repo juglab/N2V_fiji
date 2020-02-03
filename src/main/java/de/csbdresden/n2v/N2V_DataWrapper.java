@@ -10,6 +10,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.apache.commons.math3.util.Pair;
@@ -17,6 +18,7 @@ import org.scijava.Context;
 import org.scijava.plugin.Parameter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -69,7 +71,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		int num_pix = (int) ((float)multiplyShape / 100. * perc_pix);
 
 //		num_pix = int(np.product(shape)/100.0 * perc_pix)
-		System.out.println(num_pix + " blind-spots will be generated per training patch of size " + shape + ".");
+		System.out.println(num_pix + " blind-spots will be generated per training patch of size " + Arrays.toString(Intervals.dimensionsAsIntArray(shape)) + ".");
 
 //            self.patch_sampler = self.__subpatch_sampling2D__
 		this.box_size = Math.round(Math.sqrt(shape.dimension(0) * shape.dimension(1) / (float)num_pix));

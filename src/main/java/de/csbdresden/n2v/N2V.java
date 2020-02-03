@@ -46,7 +46,9 @@ import java.util.List;
 public class N2V implements Command {
 
 	@Parameter
-	private List<RandomAccessibleInterval<FloatType>> training;
+	//TODO make this a list in the future to support multiple training images
+//	private List<RandomAccessibleInterval<FloatType>> training;
+	private RandomAccessibleInterval<FloatType> training;
 
 	@Parameter
 	private RandomAccessibleInterval<FloatType> prediction;
@@ -62,6 +64,8 @@ public class N2V implements Command {
 
 	@Parameter
 	private int train_epochs = 10;
+
+	private int train_batch_size = 128;
 
 //	@Parameter
 //	int train_steps_per_epoch = 20;
@@ -101,11 +105,11 @@ public class N2V implements Command {
 
 		//TODO GUI open window for status, indicate that preprocessing is starting
 
-		System.out.println("Load TensorFlow");
+		System.out.println("Load TensorFlow..");
 		tensorFlowService.loadLibrary();
 		System.out.println(tensorFlowService.getStatus().getInfo());
 
-		System.out.println("Create session");
+		System.out.println("Create session..");
 		try (Graph graph = new Graph();
 		     Session sess = new Session(graph)) {
 
@@ -120,7 +124,9 @@ public class N2V implements Command {
 				}
 //			}
 
-			List<RandomAccessibleInterval<FloatType>> tiles = createTiles(training);
+			System.out.println("Normalize and tile training data..");
+
+			List<RandomAccessibleInterval<FloatType>> tiles = normalizeAndTile(training);
 
 			List<RandomAccessibleInterval<FloatType>> X = new ArrayList<>();
 			List<RandomAccessibleInterval<FloatType>> validationX = new ArrayList<>();
@@ -155,6 +161,9 @@ public class N2V implements Command {
 	}
 
 	private void train(Session sess, List<RandomAccessibleInterval<FloatType>> _X, List<RandomAccessibleInterval<FloatType>> _validationX) {
+
+		System.out.println("Prepare data for training..");
+
 		RandomAccessibleInterval<FloatType> X = Views.concatenate(2, _X);
 		RandomAccessibleInterval<FloatType> validationX = Views.concatenate(2, _validationX);
 
@@ -165,7 +174,6 @@ public class N2V implements Command {
 		Tensor validationXTensor = DatasetTensorFlowConverter.datasetToTensor(validationX, mapping);
 
 		int unet_n_depth = 2;
-		int train_batch_size = 64;
 		double n2v_perc_pix = 1.6;
 
 		int n_train = _X.size();
@@ -229,6 +237,8 @@ public class N2V implements Command {
 		//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 		//TODO GUI - add footer with buttons to cancel command and to stop training
 
+		System.out.println("Start training..");
+
 		for (int i = 0; i < epochs; i++) {
 
 			System.out.println("\nEpoch " + (i+1) + "/" + epochs + "\n");
@@ -278,6 +288,8 @@ public class N2V implements Command {
 			//TODO GUI - update progress bar indicating the current epoch
 		}
 
+		System.out.println("Training done.");
+
 		uiService.show("inputs", Views.stack(inputs));
 		uiService.show("targets", Views.stack(targets));
 	}
@@ -310,7 +322,7 @@ public class N2V implements Command {
 		return target;
 	}
 
-	private List<RandomAccessibleInterval<FloatType>> createTiles(List<RandomAccessibleInterval<FloatType>> training) {
+	private List<RandomAccessibleInterval<FloatType>> normalizeAndTile(List<RandomAccessibleInterval<FloatType>> training) {
 		mean = new FloatType();
 		mean.set(opService.stats().mean(Views.iterable(training.get(0))).getRealFloat());
 		stdDev = new FloatType();
@@ -320,6 +332,17 @@ public class N2V implements Command {
 		for (RandomAccessibleInterval<FloatType> trainingImg : training) {
 			tiles.addAll(createTiles(normalized(trainingImg, mean, stdDev)));
 		}
+		return tiles;
+	}
+
+	private List<RandomAccessibleInterval<FloatType>> normalizeAndTile(RandomAccessibleInterval<FloatType> training) {
+		mean = new FloatType();
+		mean.set(opService.stats().mean(Views.iterable(training)).getRealFloat());
+		stdDev = new FloatType();
+		stdDev.set(opService.stats().stdDev(Views.iterable(training)).getRealFloat());
+
+		List<RandomAccessibleInterval<FloatType>> tiles = new ArrayList<>();
+		tiles.addAll(createTiles(normalized(training, mean, stdDev)));
 		return tiles;
 	}
 
