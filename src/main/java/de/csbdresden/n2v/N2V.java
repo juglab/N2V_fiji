@@ -382,10 +382,16 @@ public class N2V implements Command {
 		if(opTrain == null) throw new RuntimeException("Training op not found");
 
 //		if(saveCheckpoints) {
-			final String checkpointDir = "n2v-checkpoint";
-			checkpointExists = Files.exists(Paths.get(checkpointDir));
-			checkpointPrefix =
-					Tensors.create(Paths.get(checkpointDir, "ckpt").toString());
+
+		String checkpointDir = "";
+		try {
+			checkpointDir = Files.createTempDirectory("n2v-checkpoints").toAbsolutePath().toString();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		checkpointExists = false;//Files.exists(Paths.get(checkpointDir));
+		checkpointPrefix =
+				Tensors.create(Paths.get(checkpointDir, "ckpt").toString());
 //		}
 
 		opNames = new ArrayList<>();
