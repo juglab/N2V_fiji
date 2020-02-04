@@ -15,6 +15,10 @@ import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
+import org.knowm.xchart.XYSeries;
+import org.knowm.xchart.style.colors.XChartSeriesColors;
+import org.knowm.xchart.style.lines.SeriesLines;
+import org.knowm.xchart.style.markers.SeriesMarkers;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
@@ -243,12 +247,9 @@ public class N2V implements Command {
 		chart.setTitle( "Epochal Loss" );
 		chart.setXAxisTitle( "Epoch" );
 		chart.setYAxisTitle( "Loss" );
-		chart.getStyler().setYAxisMin( 0.0 );
-		chart.getStyler().setYAxisMax( 1.0 ); 
-		chart.getStyler().setXAxisMin( 1.0 );
 		chart.getStyler().setXAxisMax( ( double ) epochs );
-		Color[] colors = { Color.BLUE, Color.GREEN };
-		chart.getStyler().setSeriesColors( colors );
+		chart.getStyler().setXAxisMax( ( double ) epochs );
+		chart.getStyler().setXAxisTickMarksStroke( new Stroke(1.0f));
 		SwingWrapper< XYChart > sw = new SwingWrapper< XYChart >( chart );
 		sw.displayChart();
 
@@ -262,8 +263,8 @@ public class N2V implements Command {
 			System.out.println( "\nEpoch " + ( i + 1 ) + "/" + epochs + "\n" );
 
 			float loss = 0;
-			float averageLoss = 0;
 
+			float averageLoss = 0;
 			for ( int j = 0; j < steps_per_epoch; j++ ) {
 
 				if ( index * train_batch_size + train_batch_size > n_train - 1 ) {
@@ -308,15 +309,23 @@ public class N2V implements Command {
 			
 			epochData.add((double)(i + 1));
 			averageLossData.add((double)averageLoss / steps_per_epoch);
-			// TODO!!!!! Bogus data for tweaking plot. Replace with real validation data
-			validationLossData.add(( double ) loss);
+			validationLossData.add(( double ) loss);               // TODO!!!!! Bogus data for tweaking plot. Replace with real validation data
 			if ( i == 0 ) {
+				// Size axis to zoom onto first epoch data
 				double ymax = Collections.max( losses );
 				double ymin = Collections.min( losses );
-				chart.getStyler().setYAxisMin( (Math.floor(ymin*10.0)+1.0)/10.0);
-				chart.getStyler().setYAxisMax( (Math.ceil(ymax*10.0)-1.0)/10.0);
-				chart.addSeries( "Average Loss", epochData, averageLossData );
-				chart.addSeries( "Validation Loss", epochData, validationLossData );
+				chart.getStyler().setYAxisMin( Math.floor(ymin)-0.5);
+				chart.getStyler().setYAxisMax( Math.ceil(ymax)+0.5);
+				XYSeries series1 = chart.addSeries( "Average Loss", epochData, averageLossData );
+			    series1.setLineColor(XChartSeriesColors.BLUE);
+			    series1.setMarkerColor(Color.BLUE);
+			    series1.setMarker(SeriesMarkers.CIRCLE);
+			    series1.setLineStyle(SeriesLines.SOLID);
+				XYSeries series2 = chart.addSeries( "Validation Loss", epochData, validationLossData );
+			    series1.setLineColor(XChartSeriesColors.GREEN);
+			    series1.setMarkerColor(Color.GREEN);
+			    series1.setMarker(SeriesMarkers.DIAMOND);
+			    series1.setLineStyle(SeriesLines.SOLID);
 				sw.repaintChart();
 			} else {
 
