@@ -213,8 +213,7 @@ public class N2V implements Command {
 
 		int epochs = train_epochs;
 //		int steps_per_epoch = train_steps_per_epoch;
-//		int steps_per_epoch = n_train / train_batch_size;
-		int steps_per_epoch = 4;
+		int steps_per_epoch = n_train / train_batch_size;
 		long[] targetDims = Intervals.dimensionsAsLongArray( X );
 		targetDims[ targetDims.length - 1 ]++;
 
@@ -279,8 +278,8 @@ public class N2V implements Command {
 				}
 
 				Pair< RandomAccessibleInterval, RandomAccessibleInterval > item = training_data.getItem( index );
-				inputs.add( item.getFirst() );
-				targets.add( item.getSecond() );
+//				inputs.add( item.getFirst() );
+//				targets.add( item.getSecond() );
 
 				Tensor tensorX = DatasetTensorFlowConverter.datasetToTensor( item.getFirst(), mapping );
 				Tensor tensorY = DatasetTensorFlowConverter.datasetToTensor( item.getSecond(), mapping );
@@ -299,6 +298,10 @@ public class N2V implements Command {
 				float abs = fetchedTensors.get( 1 ).floatValue();
 				float mse = fetchedTensors.get( 2 ).floatValue();
 				averageLoss += loss;
+
+				fetchedTensors.forEach(tensor -> tensor.close());
+				tensorX.close();
+				tensorY.close();
 				
 				if (i == 0)
 					losses.add((double) loss);
@@ -378,6 +381,10 @@ public class N2V implements Command {
 		float loss = fetchedTensors.get(0).floatValue();
 		float abs = fetchedTensors.get(1).floatValue();
 		float mse = fetchedTensors.get(2).floatValue();
+
+		fetchedTensors.forEach(tensor -> tensor.close());
+		tensorX.close();
+		tensorY.close();
 		System.out.println("\nValidation loss: " + loss + " abs: " + abs + " mse: " + mse);
 	}
 
