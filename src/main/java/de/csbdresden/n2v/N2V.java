@@ -1,6 +1,5 @@
 package de.csbdresden.n2v;
 
-import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -8,17 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;
-import org.knowm.xchart.SwingWrapper;
-import org.knowm.xchart.XYChart;
-import org.knowm.xchart.XYSeries;
-import org.knowm.xchart.style.colors.XChartSeriesColors;
-import org.knowm.xchart.style.lines.SeriesLines;
-import org.knowm.xchart.style.markers.SeriesMarkers;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
@@ -242,29 +234,16 @@ public class N2V implements Command {
 
 		System.out.println( "Start training.." );
 
-		// Create Chart
-		XYChart chart = new XYChart( 600, 440 );
-		chart.setTitle( "Epochal Loss" );
-		chart.setXAxisTitle( "Epoch" );
-		chart.setYAxisTitle( "Loss" );
-		chart.getStyler().setXAxisMax( ( double ) epochs );
-		chart.getStyler().setXAxisMax( ( double ) epochs );
-		chart.getStyler().setXAxisTickMarksStroke( new Stroke(1.0f));
-		SwingWrapper< XYChart > sw = new SwingWrapper< XYChart >( chart );
-		sw.displayChart();
-
-
-		List<Double> epochData = new ArrayList<Double>();
-		List<Double> averageLossData = new ArrayList<Double>();
-		List<Double> validationLossData = new ArrayList<Double>();
-		List<Double> losses = new ArrayList<Double>();
+		// Create dialog
+		N2VDialog dialog = new N2VDialog(epochs, steps_per_epoch);
+		List<Double> losses = null;
 
 		for ( int i = 0; i < epochs; i++ ) {
 			System.out.println( "\nEpoch " + ( i + 1 ) + "/" + epochs + "\n" );
 
 			float loss = 0;
+			losses = new ArrayList<Double>(steps_per_epoch);
 
-			float averageLoss = 0;
 			for ( int j = 0; j < steps_per_epoch; j++ ) {
 
 				if ( index * train_batch_size + train_batch_size > n_train - 1 ) {
@@ -290,13 +269,14 @@ public class N2V implements Command {
 
 				List< Tensor< ? > > fetchedTensors = runner.run();
 				loss = fetchedTensors.get( 0 ).floatValue();
+				losses.add( (double) loss );
 				float abs = fetchedTensors.get( 1 ).floatValue();
 				float mse = fetchedTensors.get( 2 ).floatValue();
-				averageLoss += loss;
-				
-				if (i == 0)
-					losses.add((double) loss);
 
+				fetchedTensors.forEach(tensor -> tensor.close());
+				tensorX.close();
+				tensorY.close();
+				
 				progressPercentage( j + 1, steps_per_epoch, loss, abs, mse );
 
 				//TODO GUI - update progress bar indicating the step of the current epoch
@@ -307,40 +287,6 @@ public class N2V implements Command {
 				sess.runner().feed( "save/Const", checkpointPrefix ).addTarget( "save/control_dependency" ).run();
 			}
 			
-			epochData.add((double)(i + 1));
-			averageLossData.add((double)averageLoss / steps_per_epoch);
-			validationLossData.add(( double ) loss);               // TODO!!!!! Bogus data for tweaking plot. Replace with real validation data
-			if ( i == 0 ) {
-				// Size axis to zoom onto first epoch data
-				double ymax = Collections.max( losses );
-				double ymin = Collections.min( losses );
-				chart.getStyler().setYAxisMin( Math.floor(ymin)-0.5);
-				chart.getStyler().setYAxisMax( Math.ceil(ymax)+0.5);
-				XYSeries series1 = chart.addSeries( "Average Loss", epochData, averageLossData );
-			    series1.setLineColor(XChartSeriesColors.BLUE);
-			    series1.setMarkerColor(Color.BLUE);
-			    series1.setMarker(SeriesMarkers.CIRCLE);
-			    series1.setLineStyle(SeriesLines.SOLID);
-				XYSeries series2 = chart.addSeries( "Validation Loss", epochData, validationLossData );
-			    series1.setLineColor(XChartSeriesColors.GREEN);
-			    series1.setMarkerColor(Color.GREEN);
-			    series1.setMarker(SeriesMarkers.DIAMOND);
-			    series1.setLineStyle(SeriesLines.SOLID);
-				sw.repaintChart();
-			} else {
-
-				javax.swing.SwingUtilities.invokeLater( new Runnable() {
-
-					@Override
-					public void run() {
-						chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
-						chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
-						sw.repaintChart();
-					}
-
-				} );
-			}
-			//TODO GUI - update progress bar indicating the current epoch
 		}
 
 		System.out.println( "Training done." );
