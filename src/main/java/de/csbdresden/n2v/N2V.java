@@ -287,6 +287,8 @@ public class N2V implements Command {
 				sess.runner().feed( "save/Const", checkpointPrefix ).addTarget( "save/control_dependency" ).run();
 			}
 			
+			dialog.update( i+1, losses, loss);
+			
 		}
 
 		System.out.println( "Training done." );

@@ -2,15 +2,18 @@ package de.csbdresden.n2v;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.WindowConstants;
 
-import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XChartPanel;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYSeries;
@@ -18,21 +21,22 @@ import org.knowm.xchart.style.colors.XChartSeriesColors;
 import org.knowm.xchart.style.lines.SeriesLines;
 import org.knowm.xchart.style.markers.SeriesMarkers;
 
-public class N2VDialog extends JDialog {
+public class N2VDialog {
 
 	private final static int DEFAULT_WIDTH = 600;
 	private final static int DEFAULT_HEIGHT = 400;
-	private static String dialogTitle = "N2V for Fiji";
+	private static String title = "N2V for Fiji";
 	private static String chartTitle = "Epochal Losses";
 	private static String xAxisTitle = "Epoch";
 	private static String yAxisTitle = "Loss";
 
 	private XYChart chart = null;
-	private SwingWrapper< XYChart > sw = null;
+	private XChartPanel< XYChart > chartPanel = null;
 	private int nEpochSteps;
 	List< Double > epochData = null;
 	List< Double > averageLossData = null;
 	List< Double > validationLossData = null;
+	protected JProgressBar progressBar;
 
 	/**
 	 * Default constructor for a 600x400 dialog
@@ -42,30 +46,51 @@ public class N2VDialog extends JDialog {
 	}
 
 	public N2VDialog( int dialogWidth, int dialogHeight, int nEpochs, int nEpochSteps ) {
-		super( new JFrame(), dialogTitle );
-		setSize( dialogWidth, dialogHeight );
-		setLayout(new BorderLayout());
+		final JFrame frame = new JFrame( title );
+		try {
+			javax.swing.SwingUtilities.invokeAndWait(
+					new Runnable() {
 
-		epochData = new ArrayList< Double >( nEpochs);
-		for ( int i = 0; i < nEpochs; i++ ) {
-			epochData.add( i + 1.0 );
+						@Override
+						public void run() {
+							frame.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE );
+							frame.setSize( dialogWidth, dialogHeight );
+							frame.setLayout( new BorderLayout() );
+
+							epochData = new ArrayList< Double >( nEpochs );
+							for ( int i = 0; i < nEpochs; i++ ) {
+								epochData.add( i + 1.0 );
+							}
+							averageLossData = new ArrayList<>();
+							validationLossData = new ArrayList<>();
+
+							// Create chart with as much info as possible
+							chart = new XYChart( dialogWidth, dialogHeight );
+							chart.setTitle( chartTitle );
+							chart.setXAxisTitle( xAxisTitle );
+							chart.setYAxisTitle( yAxisTitle );
+							chart.getStyler().setXAxisMin( 1.0 );
+							chart.getStyler().setXAxisMax( ( double ) nEpochs );
+							chartPanel = new XChartPanel< XYChart >( chart );
+							// Create yaxis scale panel
+							JPanel scalePanel = new JPanel();
+							scalePanel.add(new JTextField(5));
+							scalePanel.add(new JTextField(5));
+
+							progressBar = new JProgressBar( SwingConstants.VERTICAL );
+							frame.add( "North", scalePanel );
+							frame.add( "Center", chartPanel );
+							frame.add( "South", progressBar );
+							frame.pack();
+							frame.setLocationRelativeTo( null );
+							frame.setVisible( true );
+						}
+					} );
+		} catch ( InterruptedException e ) {
+			e.printStackTrace();
+		} catch ( InvocationTargetException e ) {
+			e.printStackTrace();
 		}
-		averageLossData = new ArrayList<>();
-		validationLossData = new ArrayList<>();
-
-		chart = new XYChart( dialogWidth, dialogHeight );
-		chart.setTitle( chartTitle );
-		chart.setXAxisTitle( xAxisTitle );
-		chart.setYAxisTitle( yAxisTitle );
-		chart.getStyler().setXAxisMin( 1.0 );
-		chart.getStyler().setXAxisMax( ( double ) nEpochs );
-		sw = new SwingWrapper<XYChart>( chart );
-		
-		add("North", new JPanel());
-		add("Center", new XChartPanel<XYChart>(chart));
-		add("South", new JPanel());
-		pack();
-		setVisible(true);
 
 	}
 
@@ -95,19 +120,14 @@ public class N2VDialog extends JDialog {
 			series2.setMarkerColor( Color.GREEN );
 			series2.setMarker( SeriesMarkers.DIAMOND );
 			series2.setLineStyle( SeriesLines.SOLID );
-			sw.repaintChart();
+			chartPanel.revalidate();
+			chartPanel.repaint();
 		} else {
 
-			javax.swing.SwingUtilities.invokeLater( new Runnable() {
-
-				@Override
-				public void run() {
-					chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
-					chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
-					sw.repaintChart();
-				}
-
-			} );
+			chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
+			chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
+			chartPanel.revalidate();
+			chartPanel.repaint();
 		}
 
 	}
