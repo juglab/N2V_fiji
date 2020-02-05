@@ -13,3 +13,5 @@
 # Custom
 /models/
 /bin/
+*.index
+/n2v-checkpoint/
