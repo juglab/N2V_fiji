@@ -130,12 +130,14 @@ public class N2V implements Command {
 
 			List<RandomAccessibleInterval<FloatType>> X = new ArrayList<>();
 			List<RandomAccessibleInterval<FloatType>> validationX = new ArrayList<>();
-			for (int i = 0; i < tiles.size() / 2; i++) {
+			double val_amount = 0.1;
+			int trainEnd = (int) (tiles.size() * (1 - val_amount));
+			for (int i = 0; i < trainEnd; i++) {
 				//TODO do I need to copy here?
 				X.add(opService.copy().rai(tiles.get(i)));
 			}
-			int valEnd = tiles.size() / 2 % 2 == 1 ? tiles.size() - 1 : tiles.size();
-			for (int i = tiles.size() / 2; i < valEnd; i++) {
+			int valEnd = tiles.size()-trainEnd % 2 == 1 ? tiles.size() - 1 : tiles.size();
+			for (int i = trainEnd; i < valEnd; i++) {
 				//TODO do I need to copy here?
 				validationX.add(opService.copy().rai(tiles.get(i)));
 			}
@@ -167,11 +169,11 @@ public class N2V implements Command {
 		RandomAccessibleInterval<FloatType> X = Views.concatenate(2, _X);
 		RandomAccessibleInterval<FloatType> validationX = Views.concatenate(2, _validationX);
 
-		uiService.show("X", X);
+//		uiService.show("X", X);
 //		uiService.show("validationX", validationX);
 
-		Tensor XTensor = DatasetTensorFlowConverter.datasetToTensor(X, mapping);
-		Tensor validationXTensor = DatasetTensorFlowConverter.datasetToTensor(validationX, mapping);
+//		Tensor XTensor = DatasetTensorFlowConverter.datasetToTensor(X, mapping);
+//		Tensor validationXTensor = DatasetTensorFlowConverter.datasetToTensor(validationX, mapping);
 
 		int unet_n_depth = 2;
 		double n2v_perc_pix = 1.6;
@@ -191,15 +193,16 @@ public class N2V implements Command {
 		long val_num_pix = 1;
 		long train_num_pix = 1;
 //        val_patch_shape = ()
-		long[] _val_patch_shape = new long[XTensor.numDimensions()-2];
-		for (int i = 1; i < XTensor.shape().length - 1; i++) {
-			long n = XTensor.shape()[i];
-			val_num_pix *= validationXTensor.shape()[i];
-			train_num_pix *= XTensor.shape()[i];
-			_val_patch_shape[i-1] = validationXTensor.shape()[i];
-			if (n % div_by != 0)
+		long[] _val_patch_shape = new long[X.numDimensions()-2];
+		for (int i = 0; i < X.numDimensions() - 2; i++) {
+			long n = X.dimension(i);
+			val_num_pix *= validationX.dimension(i);
+			train_num_pix *= X.dimension(i);
+			_val_patch_shape[i] = validationX.dimension(i);
+			if (n % div_by != 0) {
 				System.err.println("training images must be evenly divisible by " + div_by
 						+ "along axes XY (axis " + i + " has incompatible size " + n + ")");
+			}
 		}
 		Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
 
@@ -209,8 +212,8 @@ public class N2V implements Command {
 		long[] targetDims = Intervals.dimensionsAsLongArray(X);
 		targetDims[targetDims.length - 1]++;
 
-		RandomAccessibleInterval<FloatType> validationY = opService.create().img(new FinalInterval(targetDims), X.randomAccess().get().copy());
-		N2VUtils.manipulate_val_data(validationX, validationY, n2v_perc_pix, val_patch_shape);
+//		RandomAccessibleInterval<FloatType> validationY = opService.create().img(new FinalInterval(targetDims), X.randomAccess().get().copy());
+//		N2VUtils.manipulate_val_data(validationX, validationY, n2v_perc_pix, val_patch_shape);
 
 //		uiService.show("validationY", validationY);
 
@@ -218,6 +221,13 @@ public class N2V implements Command {
 
 		N2V_DataWrapper<FloatType> training_data = new N2V_DataWrapper<>(context, X,
 				target, train_batch_size,
+				n2v_perc_pix, val_patch_shape,
+				N2V_DataWrapper::uniform_withCP);
+
+		Img<FloatType> validationTarget = makeTarget(validationX, targetDims);
+
+		N2V_DataWrapper<FloatType> validation_data = new N2V_DataWrapper<>(context, validationX,
+				validationTarget, train_batch_size,
 				n2v_perc_pix, val_patch_shape,
 				N2V_DataWrapper::uniform_withCP);
 
@@ -284,6 +294,7 @@ public class N2V implements Command {
 			if(saveCheckpoints) {
 				sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 			}
+			validate(sess, validation_data, tensorWeights);
 			//TODO GUI - update plot to display loss
 			//TODO GUI - update progress bar indicating the current epoch
 		}
@@ -292,6 +303,31 @@ public class N2V implements Command {
 
 		if(inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
 		if(targets.size() > 0) uiService.show("targets", Views.stack(targets));
+	}
+
+	private void validate(Session sess, N2V_DataWrapper validationData, Tensor tensorWeights) {
+
+		Pair<RandomAccessibleInterval, RandomAccessibleInterval> item = validationData.getItem(0);
+
+		Tensor tensorX = DatasetTensorFlowConverter.datasetToTensor(item.getFirst(), mapping);
+		Tensor tensorY = DatasetTensorFlowConverter.datasetToTensor(item.getSecond(), mapping);
+
+		Session.Runner runner = sess.runner();
+
+		runner.feed(tensorXOpName, tensorX)
+				.feed(tensorYOpName, tensorY)
+//						.feed(kerasLearningOpName, Tensors.create(true))
+				.feed(sampleWeightsOpName, tensorWeights)
+				.addTarget(predictionTargetOpName);
+		runner.fetch("loss/mul");
+		runner.fetch("metrics/n2v_abs/Mean");
+		runner.fetch("metrics/n2v_mse/Mean");
+
+		List<Tensor<?>> fetchedTensors = runner.run();
+		float loss = fetchedTensors.get(0).floatValue();
+		float abs = fetchedTensors.get(1).floatValue();
+		float mse = fetchedTensors.get(2).floatValue();
+		System.out.println("\nValidation loss: " + loss + " abs: " + abs + " mse: " + mse);
 	}
 
 	public static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse) {
@@ -418,7 +454,7 @@ public class N2V implements Command {
 		System.out.println("Generated " + tiles.size() + " tiles of shape " + Arrays.toString(tiledim));
 
 		RandomAccessibleInterval<FloatType> tilesStack = Views.stack(tiles);
-		uiService.show("tiles", tilesStack);
+//		uiService.show("tiles", tilesStack);
 		return tiles;
 	}
 
