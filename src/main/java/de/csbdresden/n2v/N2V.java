@@ -1,16 +1,19 @@
 package de.csbdresden.n2v;
 
-import java.awt.Color;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
+import net.imagej.ImageJ;
+import net.imagej.ops.OpService;
+import net.imagej.tensorflow.TensorFlowService;
+import net.imglib2.Cursor;
+import net.imglib2.Dimensions;
+import net.imglib2.FinalDimensions;
+import net.imglib2.FinalInterval;
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
+import net.imglib2.view.Views;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.knowm.xchart.SwingWrapper;
@@ -23,9 +26,11 @@ import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
+import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.ui.UIService;
+import org.scijava.util.FileUtils;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
 import org.tensorflow.Output;
@@ -33,21 +38,17 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
 
-import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
-import net.imagej.ImageJ;
-import net.imagej.ops.OpService;
-import net.imagej.tensorflow.TensorFlowService;
-import net.imglib2.Cursor;
-import net.imglib2.Dimensions;
-import net.imglib2.FinalDimensions;
-import net.imglib2.FinalInterval;
-import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
-import net.imglib2.view.Views;
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V" )
 public class N2V implements Command {
@@ -84,6 +85,9 @@ public class N2V implements Command {
 	private OpService opService;
 
 	@Parameter
+	private CommandService commandService;
+
+	@Parameter
 	private UIService uiService;
 
 	@Parameter
@@ -106,6 +110,7 @@ public class N2V implements Command {
 
 	//TODO make work, almost there
 	private boolean saveCheckpoints = true;
+	private File modelDir;
 
 	@Override
 	public void run() {
@@ -153,7 +158,7 @@ public class N2V implements Command {
 
 			//TODO GUI - indicate training is done, indicate prediction calculation is starting
 
-			runPrediction( prediction, sess, mapping );
+			runPrediction( prediction );
 
 		}
 	}
@@ -425,7 +430,7 @@ public class N2V implements Command {
 
 		List< RandomAccessibleInterval< FloatType > > tiles = new ArrayList<>();
 		for ( RandomAccessibleInterval< FloatType > trainingImg : training ) {
-			tiles.addAll( createTiles( normalized( trainingImg, mean, stdDev ) ) );
+			tiles.addAll( createTiles( N2VUtils.normalize( trainingImg, mean, stdDev, opService ) ) );
 		}
 		return tiles;
 	}
@@ -437,28 +442,29 @@ public class N2V implements Command {
 		stdDev.set( opService.stats().stdDev( Views.iterable( training ) ).getRealFloat() );
 
 		List< RandomAccessibleInterval< FloatType > > tiles = new ArrayList<>();
-		tiles.addAll( createTiles( normalized( training, mean, stdDev ) ) );
+		tiles.addAll( createTiles( N2VUtils.normalize( training, mean, stdDev, opService ) ) );
 		return tiles;
 	}
 
-	private void runPrediction( RandomAccessibleInterval< FloatType > inputRAI, Session sess, int[] mapping ) {
-		long dimX = inputRAI.dimension( 0 );
-		long dimY = inputRAI.dimension( 1 );
-		long x_new = dimX - ( dimX % 8 ) + 8;
-		long y_new = dimY - ( dimY % 8 ) + 8;
-		RandomAccessibleInterval predictionInput = Views.interval( Views.extendZero( inputRAI ), new long[] { 0, 0 }, new long[] { x_new - 1, y_new - 1 } );
-		predictionInput = Views.addDimension( predictionInput, 0, 0 );
-		predictionInput = Views.addDimension( predictionInput, 0, 0 );
+	private void runPrediction( RandomAccessibleInterval< FloatType > inputRAI ) {
 
-		predictionInput = normalized( predictionInput, mean, stdDev );
+		File zip = null;
+		try {
+			zip = N2VUtils.saveTrainedModel(modelDir);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-		Tensor inputTensor = DatasetTensorFlowConverter.datasetToTensor( predictionInput, mapping );
+		try {
+			final CommandModule module = commandService.run(
+					N2VPredictionCommand.class, false,
+					"prediction", inputRAI,
+					"modelFile", zip.getAbsolutePath()).get();
+			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
 
-		Tensor outputTensor = sess.runner().feed( tensorXOpName, inputTensor )
-//				.feed(kerasLearningOpName, Tensors.create(false))
-				.fetch( predictionTargetOpName ).run().get( 0 );
-		output = DatasetTensorFlowConverter.tensorToDataset( outputTensor, new FloatType(), mapping, false );
-		output = Views.interval( inputRAI, new long[] { 0, 0 }, new long[] { dimX - 1, dimY - 1 } );
 	}
 
 	private List< String > loadGraph( Graph graph ) {
@@ -471,6 +477,7 @@ public class N2V implements Command {
 			e.printStackTrace();
 		}
 		graph.importGraphDef( graphDef );
+
 		Operation opTrain = graph.operation( trainingTargetOpName );
 		if ( opTrain == null ) throw new RuntimeException( "Training op not found" );
 
@@ -478,13 +485,16 @@ public class N2V implements Command {
 
 		String checkpointDir = "";
 		try {
-			checkpointDir = Files.createTempDirectory("n2v-checkpoints").toAbsolutePath().toString();
+			checkpointDir = Files.createTempDirectory("n2v-checkpoints").toAbsolutePath().toString() + File.separator + "variables";
+			byte[] predictionGraphDef = IOUtils.toByteArray( getClass().getResourceAsStream( "/prediction/saved_model.pb" ) );
+			FileUtils.writeFile(new File(new File(checkpointDir).getParentFile(), "saved_model.pb"), predictionGraphDef);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		checkpointExists = false;//Files.exists(Paths.get(checkpointDir));
 		checkpointPrefix =
 				Tensors.create(Paths.get(checkpointDir, "ckpt").toString());
+		this.modelDir = new File(checkpointDir).getParentFile();
 //		}
 
 		opNames = new ArrayList<>();
@@ -513,18 +523,6 @@ public class N2V implements Command {
 //		RandomAccessibleInterval<FloatType> tilesStack = Views.stack(tiles);
 //		uiService.show("tiles", tilesStack);
 		return tiles;
-	}
-
-	private RandomAccessibleInterval< FloatType > normalized( RandomAccessibleInterval< FloatType > input, FloatType mean, FloatType stdDev ) {
-//		Img<FloatType> rai = opService.create().img(input);
-//		LoopBuilder.setImages( rai, input ).forEachPixel( ( res, in ) -> {
-//			res.set(in);
-//			res.sub(mean);
-//			res.div(stdDev);
-//
-//		} );
-		IterableInterval< FloatType > rai = opService.math().subtract( Views.iterable( input ), mean );
-		return ( RandomAccessibleInterval< FloatType > ) opService.math().divide( rai, stdDev );
 	}
 
 	public static void main( final String... args ) throws Exception {
