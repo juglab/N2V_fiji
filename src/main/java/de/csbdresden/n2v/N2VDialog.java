@@ -57,10 +57,7 @@ public class N2VDialog {
 							frame.setSize( dialogWidth, dialogHeight );
 							frame.setLayout( new BorderLayout() );
 
-							epochData = new ArrayList< Double >( nEpochs );
-							for ( int i = 0; i < nEpochs; i++ ) {
-								epochData.add( i + 1.0 );
-							}
+							epochData = new ArrayList< Double >();
 							averageLossData = new ArrayList<>();
 							validationLossData = new ArrayList<>();
 
@@ -77,7 +74,7 @@ public class N2VDialog {
 							scalePanel.add(new JTextField(5));
 							scalePanel.add(new JTextField(5));
 
-							progressBar = new JProgressBar( SwingConstants.VERTICAL );
+							progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
 							frame.add( "North", scalePanel );
 							frame.add( "Center", chartPanel );
 							frame.add( "South", progressBar );
@@ -101,6 +98,7 @@ public class N2VDialog {
 			averageLoss += losses.get( i );
 		}
 
+		epochData.add( (double) nEpoch );
 		averageLossData.add( averageLoss / nEpochSteps );
 		validationLossData.add( validationLoss );
 
