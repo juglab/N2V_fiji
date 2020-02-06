@@ -106,6 +106,18 @@
 			<version>0.5.0</version>
 		</dependency>
 		
+		<!-- UI dependency -->
+		<dependency>
+			<groupId>com.miglayout</groupId>
+			<artifactId>miglayout-core</artifactId>
+			<version>5.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.miglayout</groupId>
+			<artifactId>miglayout-swing</artifactId>
+			<version>5.0</version>
+		</dependency>
+		
 		<!-- Graphing dependency -->
 		<dependency>
 			<groupId>org.knowm.xchart</groupId>

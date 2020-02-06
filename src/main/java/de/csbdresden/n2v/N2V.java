@@ -99,6 +99,8 @@ public class N2V implements Command {
 	//TODO make work, almost there
 	private boolean saveCheckpoints = true;
 
+	private N2VDialog dialog;
+
 	@Override
 	public void run() {
 
@@ -160,8 +162,10 @@ public class N2V implements Command {
 	}
 
 	private void train( Session sess, List< RandomAccessibleInterval< FloatType > > _X, List< RandomAccessibleInterval< FloatType > > _validationX ) {
+		dialog = new N2VDialog(this);
 
 		System.out.println( "Prepare data for training.." );
+		dialog.updateProgress( "Prepare data for training.." );
 
 		RandomAccessibleInterval< FloatType > X = Views.concatenate( 2, _X );
 		RandomAccessibleInterval< FloatType > validationX = Views.concatenate( 2, _validationX );
@@ -225,21 +229,17 @@ public class N2V implements Command {
 		}
 		Tensor< Float > tensorWeights = Tensors.create( weightsdata );
 
-		//TODO GUI - indicate that training is starting
-		//TODO GUI - show progress bar indicating the current epoch (i, epochs)
-		//TODO GUI - show progress bar indicating the step of the current epoch (j, steps_per_epoch)
-		//TODO GUI - show plot to display loss (later we might add validation, but this is not yet calculated at all)
 		//TODO GUI - display time estimate until training is done - each step should take roughly the same time
-		//TODO GUI - add footer with buttons to cancel command and to stop training
 
 		System.out.println( "Start training.." );
+		dialog.updateProgress( "Start training ..." );
 
 		// Create dialog
-		N2VDialog dialog = new N2VDialog(epochs, steps_per_epoch);
+		dialog.initChart( epochs, steps_per_epoch);
 		List<Double> losses = null;
 
 		for ( int i = 0; i < epochs; i++ ) {
-			System.out.println( "\nEpoch " + ( i + 1 ) + "/" + epochs + "\n" );
+			System.out.println( "Epoch " + ( i + 1 ) + "/" + epochs);
 
 			float loss = 0;
 			losses = new ArrayList<Double>(steps_per_epoch);
@@ -278,6 +278,7 @@ public class N2V implements Command {
 				tensorY.close();
 				
 				progressPercentage( j + 1, steps_per_epoch, loss, abs, mse );
+				dialog.updateProgress(i + 1, j+ 1);
 
 				//TODO GUI - update progress bar indicating the step of the current epoch
 				index++;
@@ -287,14 +288,21 @@ public class N2V implements Command {
 				sess.runner().feed( "save/Const", checkpointPrefix ).addTarget( "save/control_dependency" ).run();
 			}
 			
-			dialog.update( i+1, losses, loss);
+			dialog.updateChart( i+1, losses, loss);
 			
 		}
 
+		dialog.updateProgress("Training done." );
 		System.out.println( "Training done." );
 
 		if ( inputs.size() > 0 ) uiService.show( "inputs", Views.stack( inputs ) );
 		if ( targets.size() > 0 ) uiService.show( "targets", Views.stack( targets ) );
+	}
+	
+	//TODO This method to be called from Dialog to stop training.
+	public boolean cancelTraining() {
+		// If cancellation is successfull, Dialog will reset itself....
+		return false;
 	}
 
 	public static void progressPercentage( int step, int stepTotal, float loss, float abs, float mse ) {
