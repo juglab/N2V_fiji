@@ -105,12 +105,15 @@ public class N2V implements Command {
 	public void run() {
 
 		//TODO GUI open window for status, indicate that preprocessing is starting
+		dialog = new N2VDialog(this);
+		dialog.updateProgressText("Loading TensorFlow" );
 
 		System.out.println( "Load TensorFlow.." );
 		tensorFlowService.loadLibrary();
 		System.out.println( tensorFlowService.getStatus().getInfo() );
 
 		System.out.println( "Create session.." );
+		dialog.updateProgressText("Creating session" );
 		try (Graph graph = new Graph();
 				Session sess = new Session( graph )) {
 
@@ -126,6 +129,7 @@ public class N2V implements Command {
 //			}
 
 			System.out.println( "Normalize and tile training data.." );
+			dialog.updateProgressText("Normalizing and tiling training data" );
 
 			List< RandomAccessibleInterval< FloatType > > tiles = normalizeAndTile( training );
 
@@ -153,6 +157,7 @@ public class N2V implements Command {
 	private void locateGraphDefFile() {
 		if ( useDefaultGraph || graphDefFile == null || !graphDefFile.exists() ) {
 			System.out.println( "Loading graph def file from resources" );
+			dialog.updateProgressText("Loading graph definition file" );
 			try {
 				graphDefFile = new File( getClass().getResource( "/graph.pb" ).toURI() );
 			} catch ( URISyntaxException e ) {
@@ -162,10 +167,9 @@ public class N2V implements Command {
 	}
 
 	private void train( Session sess, List< RandomAccessibleInterval< FloatType > > _X, List< RandomAccessibleInterval< FloatType > > _validationX ) {
-		dialog = new N2VDialog(this);
 
 		System.out.println( "Prepare data for training.." );
-		dialog.updateProgress( "Prepare data for training.." );
+		dialog.updateProgressText( "Preparing data for training" );
 
 		RandomAccessibleInterval< FloatType > X = Views.concatenate( 2, _X );
 		RandomAccessibleInterval< FloatType > validationX = Views.concatenate( 2, _validationX );
@@ -232,7 +236,7 @@ public class N2V implements Command {
 		//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 
 		System.out.println( "Start training.." );
-		dialog.updateProgress( "Start training ..." );
+		dialog.updateProgressText( "Starting training ..." );
 
 		// Create dialog
 		dialog.initChart( epochs, steps_per_epoch);
@@ -292,7 +296,7 @@ public class N2V implements Command {
 			
 		}
 
-		dialog.updateProgress("Training done." );
+		dialog.updateProgressText("Training done." );
 		System.out.println( "Training done." );
 
 		if ( inputs.size() > 0 ) uiService.show( "inputs", Views.stack( inputs ) );

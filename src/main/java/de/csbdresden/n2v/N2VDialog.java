@@ -3,6 +3,9 @@ package de.csbdresden.n2v;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
@@ -10,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.InputVerifier;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -34,7 +38,11 @@ import net.miginfocom.swing.MigLayout;
 public class N2VDialog {
 
 	private final static int DEFAULT_WIDTH = 600;
-	private final static int DEFAULT_HEIGHT = 100;
+	private final static int DEFAULT_MIN_HEIGHT = 150;
+	private final static int DEFAULT_MAX_HEIGHT = 650;
+	private final static int DEFAULT_CHART_HEIGHT = 400;
+	private final static int DEFAULT_BAR_WIDTH = 400;
+	private final static int DEFAULT_BAR_HEIGHT = 20;
 	private static String title = "N2V for Fiji";
 	private static String chartTitle = "Epochal Losses";
 	private static String xAxisTitle = "Epoch";
@@ -52,8 +60,12 @@ public class N2VDialog {
 	private JFrame frame;
 	protected JLabel message;
 	protected JButton rescaleBtn;
+	protected JPanel bottomPanel;
+	protected JPanel topPanel;
+	private N2V n2v;
 
 	public N2VDialog( final N2V n2v) {
+		this.n2v = n2v;
 		frame = new JFrame( title );
 		try {
 			javax.swing.SwingUtilities.invokeAndWait(
@@ -61,75 +73,14 @@ public class N2VDialog {
 
 						@Override
 						public void run() {
+							frame.setSize( DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT );
 							frame.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE );
-							splitPane = new JSplitPane( JSplitPane.VERTICAL_SPLIT );
-							splitPane.setContinuousLayout( true );
-
-							// Pogress panel
-							JPanel topPanel = new JPanel();
-							topPanel.setLayout( new MigLayout("","[center]","[center]") );
-							message = new JLabel();
-							topPanel.add( message, "align center, wrap" );
-							progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
-							progressBar.setPreferredSize( new Dimension( 400, 20 ) );
-							progressBar.setIndeterminate( true );
-							progressBar.setVisible( true );
-							topPanel.add( progressBar, "align center, wrap" );
-							JButton cancelBtn = new JButton( "Cancel Training" );
-							cancelBtn.addActionListener( new ActionListener() {
-
-								@Override
-								public void actionPerformed( ActionEvent e ) {
-									if (n2v.cancelTraining()) {
-										//TODO reset UI
-									}
-								}
-
-							} );
-							topPanel.add( cancelBtn, "align center" );
-							splitPane.setTopComponent( topPanel );
-
-							// Create chart with as much info as possible
-							JPanel bottomPanel = new JPanel();
-							bottomPanel.setLayout( new BorderLayout() );
-							chart = new XYChart( DEFAULT_WIDTH, DEFAULT_HEIGHT * 4 );
-							chart.setTitle( chartTitle );
-							chart.setXAxisTitle( xAxisTitle );
-							chart.setYAxisTitle( yAxisTitle );
-							chartPanel = new XChartPanel< XYChart >( chart );
-							bottomPanel.add( chartPanel, BorderLayout.CENTER );
-
-							// YAxis rescaling
-							JPanel scalePanel = new JPanel();
-							scalePanel.add( new JLabel( "ymin" ) );
-							JTextField yminTF = new JTextField( 5 );
-							yminTF.setInputVerifier( new TFInputVerifier() );
-							scalePanel.add( yminTF );
-							scalePanel.add( new JLabel( "ymax" ) );
-							JTextField ymaxTF = new JTextField( 5 );
-							ymaxTF.setInputVerifier( new TFInputVerifier() );
-							scalePanel.add( ymaxTF );
-							rescaleBtn = new JButton( "Rescale" );
-							rescaleBtn.addActionListener( new ActionListener() {
-
-								@Override
-								public void actionPerformed( ActionEvent e ) {
-									//TODO validate input is not garbage.
-									chart.getStyler().setYAxisMin( Double.valueOf( yminTF.getText() ) );
-									chart.getStyler().setYAxisMax( Double.valueOf( ymaxTF.getText() ) );
-									chartPanel.revalidate();
-									chartPanel.repaint();
-								}
-
-							} );
-							scalePanel.add( rescaleBtn );
-							bottomPanel.add( scalePanel, BorderLayout.SOUTH );
-
-							splitPane.setBottomComponent( bottomPanel );
-							splitPane.getBottomComponent().setVisible( false );
-
-							frame.add( splitPane );
-							frame.setSize( DEFAULT_WIDTH, DEFAULT_HEIGHT );
+							frame.setLayout( new BorderLayout() );
+								
+							createProgressPanel();
+							createChartPanel();
+							
+							frame.add( topPanel, BorderLayout.NORTH );
 							frame.pack();
 							frame.setLocationRelativeTo( null );
 							frame.setVisible( true );
@@ -141,6 +92,88 @@ public class N2VDialog {
 			e.printStackTrace();
 		}
 
+	}
+	
+	private void createProgressPanel()
+	{
+		// Progress panel
+		topPanel = new JPanel();
+		topPanel.setBorder( BorderFactory.createEmptyBorder(5, 5, 10, 5));
+		topPanel.setLayout( new GridBagLayout());
+	    GridBagConstraints gbc = new GridBagConstraints();
+	    gbc.anchor = GridBagConstraints.CENTER;
+	    gbc.fill = GridBagConstraints.NONE;
+	    gbc.insets = new Insets(5,5,5,5);
+	    gbc.gridy = 0;
+	    
+		message = new JLabel();
+		topPanel.add( message, gbc );
+		
+	    gbc.gridy = 1;
+	    gbc.insets = new Insets(0,10,0,10);
+	    gbc.fill = GridBagConstraints.HORIZONTAL;
+		progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
+		progressBar.setPreferredSize( new Dimension(DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT));
+		progressBar.setIndeterminate( true );
+		progressBar.setVisible( true );
+		topPanel.add( progressBar, gbc );
+		
+	    gbc.gridy = 2;
+	    gbc.insets = new Insets(5,5,5,5);
+	    gbc.fill = GridBagConstraints.NONE;
+		JButton cancelBtn = new JButton( "Cancel Training" );
+		cancelBtn.addActionListener( new ActionListener() {
+
+			@Override
+			public void actionPerformed( ActionEvent e ) {
+				if (n2v.cancelTraining()) {
+					//TODO reset UI
+				}
+			}
+
+		} );
+		topPanel.add( cancelBtn, gbc );
+	}
+	
+	private void createChartPanel()
+	{
+		bottomPanel = new JPanel();
+		bottomPanel.setLayout( new BorderLayout() );
+		bottomPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 10, 5));
+		
+		// Basic chart layout
+		chart = new XYChart( DEFAULT_WIDTH, DEFAULT_CHART_HEIGHT);
+		chart.setTitle( chartTitle );
+		chart.setXAxisTitle( xAxisTitle );
+		chart.setYAxisTitle( yAxisTitle );
+		chartPanel = new XChartPanel< XYChart >( chart );
+		chartPanel.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_CHART_HEIGHT));
+		bottomPanel.add( chartPanel, BorderLayout.CENTER );
+
+		// Inputs for re-scaling y axis
+		JPanel scalePanel = new JPanel();
+		scalePanel.add( new JLabel( "ymin" ) );
+		JTextField yminTF = new JTextField( 5 );
+		yminTF.setInputVerifier( new TFInputVerifier() );
+		scalePanel.add( yminTF );
+		scalePanel.add( new JLabel( "ymax" ) );
+		JTextField ymaxTF = new JTextField( 5 );
+		ymaxTF.setInputVerifier( new TFInputVerifier() );
+		scalePanel.add( ymaxTF );
+		rescaleBtn = new JButton( "Rescale" );
+		rescaleBtn.addActionListener( new ActionListener() {
+
+			@Override
+			public void actionPerformed( ActionEvent e ) {
+				chart.getStyler().setYAxisMin( Double.valueOf( yminTF.getText() ) );
+				chart.getStyler().setYAxisMax( Double.valueOf( ymaxTF.getText() ) );
+				chartPanel.revalidate();
+				chartPanel.repaint();
+			}
+
+		} );
+		scalePanel.add( rescaleBtn );
+		bottomPanel.add( scalePanel, BorderLayout.SOUTH );
 	}
 
 	public void initChart( int nEpochs, int nEpochSteps ) {
@@ -168,8 +201,8 @@ public class N2VDialog {
 			double ymin = Collections.min( losses );
 			chart.getStyler().setXAxisMin( 1.0 );
 			chart.getStyler().setXAxisMax( ( double ) nEpochs );
-			chart.getStyler().setYAxisMin( Math.floor( ymin ) - 0.5 );
-			chart.getStyler().setYAxisMax( Math.ceil( ymax ) + 0.5 );
+			chart.getStyler().setYAxisMin( (Math.floor( ymin ) - 0.2 ));
+			chart.getStyler().setYAxisMax( (Math.ceil( ymax ) + 0.2 ));
 			XYSeries series1 = chart.addSeries( "Average Loss", epochData, averageLossData );
 			series1.setLineColor( XChartSeriesColors.BLUE );
 			series1.setMarkerColor( Color.BLUE );
@@ -182,36 +215,39 @@ public class N2VDialog {
 			series2.setLineStyle( SeriesLines.SOLID );
 			chartPanel.revalidate();
 			chartPanel.repaint();
-			splitPane.getBottomComponent().setVisible( true );
-			frame.setSize( 800, 600 );
-		} else {
+			frame.add( bottomPanel, BorderLayout.CENTER );
+			frame.pack();
+			frame.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_MAX_HEIGHT ));
+			topPanel.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT ));
+			topPanel.revalidate();
+			topPanel.repaint();
+			frame.revalidate();
+			frame.repaint();
+		} 
 
-			chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
-			chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
-			chartPanel.revalidate();
-			chartPanel.repaint();
-		}
+		chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
+		chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
+		chartPanel.revalidate();
+		chartPanel.repaint();
 
 	}
 
-	public void updateProgress(String text) {
+	public void updateProgressText(String text) {
 		message.setText(text);
 		message.repaint();
 	}
 	
 	public void updateProgress(int epoch, int step ) {
-		int maxBareSize = 10; // 10unit for 100%
-		int remainProcent = ( ( 100 * step ) / nEpochSteps ) / maxBareSize;
-		char defaultChar = '-';
-		String icon = "*";
-		String bare = new String( new char[ maxBareSize ] ).replace( '\0', defaultChar ) + "]";
-		StringBuilder bareDone = new StringBuilder();
-		bareDone.append( "[" );
-		for ( int i = 0; i < remainProcent; i++ ) {
-			bareDone.append( icon );
+		if (progressBar.isIndeterminate())
+		{
+			progressBar.setIndeterminate( false );
+			progressBar.setMinimum( 0 );
+			progressBar.setMaximum( 10 );
 		}
-		String bareRemain = bare.substring( remainProcent );
-		message.setText( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps + " \t" + bareDone + bareRemain);
+		int maxBareSize = 10; // 10unit for 100%
+		int remainPercent = ( ( 100 * step ) / nEpochSteps ) / maxBareSize;
+		progressBar.setValue(remainPercent);
+		message.setText( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps);
 		message.repaint();
 	}
 
