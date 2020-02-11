@@ -44,9 +44,9 @@ public class N2VPredictionCommand implements Command {
 
 		prediction = N2VUtils.normalize( prediction, mean, stdDev, opService );
 
-		//TODO GUI open window for status, indicate that preprocessing is starting
-
 		File zip = modelFile;
+
+		System.out.println("Loading model from " + modelFile);
 
 		try {
 			final CommandModule module = commandService.run(

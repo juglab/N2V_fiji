@@ -51,7 +51,7 @@ public class N2VUtils {
 	}
 
 	static File saveTrainedModel(File checkpointDir) throws IOException {
-		Path out = Files.createTempFile("n2v-trained-model", "zip");
+		Path out = Files.createTempFile("n2v-trained-model", ".zip");
 		FileOutputStream fos = new FileOutputStream(out.toFile());
 		ZipOutputStream zipOut = new ZipOutputStream(fos);
 		ZipDirectory.zipFile(checkpointDir, null, zipOut);

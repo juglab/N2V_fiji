@@ -62,9 +62,9 @@ public class N2VDialog {
 	protected JButton rescaleBtn;
 	protected JPanel bottomPanel;
 	protected JPanel topPanel;
-	private N2V n2v;
+	private N2VTraining n2v;
 
-	public N2VDialog( final N2V n2v) {
+	public N2VDialog( final N2VTraining n2v) {
 		this.n2v = n2v;
 		frame = new JFrame( title );
 		try {
