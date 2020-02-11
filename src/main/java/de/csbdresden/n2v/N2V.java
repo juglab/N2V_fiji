@@ -104,16 +104,21 @@ public class N2V implements Command {
 	private boolean saveCheckpoints = true;
 	private File modelDir;
 
+	private N2VDialog dialog;
+
 	@Override
 	public void run() {
 
 		//TODO GUI open window for status, indicate that preprocessing is starting
+		dialog = new N2VDialog(this);
+		dialog.updateProgressText("Loading TensorFlow" );
 
 		System.out.println( "Load TensorFlow.." );
 		tensorFlowService.loadLibrary();
 		System.out.println( tensorFlowService.getStatus().getInfo() );
 
 		System.out.println( "Create session.." );
+		dialog.updateProgressText("Creating session" );
 		try (Graph graph = new Graph();
 				Session sess = new Session( graph )) {
 
@@ -129,6 +134,7 @@ public class N2V implements Command {
 //			}
 
 			System.out.println( "Normalize and tile training data.." );
+			dialog.updateProgressText("Normalizing and tiling training data" );
 
 			List< RandomAccessibleInterval< FloatType > > tiles = normalizeAndTile( training );
 
@@ -158,6 +164,7 @@ public class N2V implements Command {
 	private void locateGraphDefFile() {
 		if ( useDefaultGraph || graphDefFile == null || !graphDefFile.exists() ) {
 			System.out.println( "Loading graph def file from resources" );
+			dialog.updateProgressText("Loading graph definition file" );
 			try {
 				graphDefFile = new File( getClass().getResource( "/graph.pb" ).toURI() );
 			} catch ( URISyntaxException e ) {
@@ -169,6 +176,7 @@ public class N2V implements Command {
 	private void train( Session sess, List< RandomAccessibleInterval< FloatType > > _X, List< RandomAccessibleInterval< FloatType > > _validationX ) {
 
 		System.out.println( "Prepare data for training.." );
+		dialog.updateProgressText( "Preparing data for training" );
 
 		RandomAccessibleInterval< FloatType > X = Views.concatenate( 2, _X );
 		RandomAccessibleInterval< FloatType > validationX = Views.concatenate( 2, _validationX );
@@ -236,21 +244,17 @@ public class N2V implements Command {
 		}
 		Tensor< Float > tensorWeights = Tensors.create( weightsdata );
 
-		//TODO GUI - indicate that training is starting
-		//TODO GUI - show progress bar indicating the current epoch (i, epochs)
-		//TODO GUI - show progress bar indicating the step of the current epoch (j, steps_per_epoch)
-		//TODO GUI - show plot to display loss (later we might add validation, but this is not yet calculated at all)
 		//TODO GUI - display time estimate until training is done - each step should take roughly the same time
-		//TODO GUI - add footer with buttons to cancel command and to stop training
 
 		System.out.println( "Start training.." );
+		dialog.updateProgressText( "Starting training ..." );
 
 		// Create dialog
-		N2VDialog dialog = new N2VDialog(epochs, steps_per_epoch);
+		dialog.initChart( epochs, steps_per_epoch);
 		List<Double> losses = null;
 
 		for ( int i = 0; i < epochs; i++ ) {
-			System.out.println( "\nEpoch " + ( i + 1 ) + "/" + epochs + "\n" );
+			System.out.println( "Epoch " + ( i + 1 ) + "/" + epochs);
 
 			float loss = 0;
 			losses = new ArrayList<>(steps_per_epoch);
@@ -289,6 +293,7 @@ public class N2V implements Command {
 				tensorY.close();
 				
 				progressPercentage( j + 1, steps_per_epoch, loss, abs, mse );
+				dialog.updateProgress(i + 1, j+ 1);
 
 				//TODO GUI - update progress bar indicating the step of the current epoch
 				index++;
@@ -298,19 +303,26 @@ public class N2V implements Command {
 				sess.runner().feed( "save/Const", checkpointPrefix ).addTarget( "save/control_dependency" ).run();
 			}
 
-			validate(sess, validation_data, tensorWeights);
+			float validationLoss = validate(sess, validation_data, tensorWeights);
 
-			dialog.update( i+1, losses, loss);
+			dialog.updateChart( i+1, losses, validationLoss);
 
 		}
 
+		dialog.updateProgressText("Training done." );
 		System.out.println( "Training done." );
 
 		if ( inputs.size() > 0 ) uiService.show( "inputs", Views.stack( inputs ) );
 		if ( targets.size() > 0 ) uiService.show( "targets", Views.stack( targets ) );
 	}
+	
+	//TODO This method to be called from Dialog to stop training.
+	public boolean cancelTraining() {
+		// If cancellation is successfull, Dialog will reset itself....
+		return false;
+	}
 
-	private void validate(Session sess, N2V_DataWrapper validationData, Tensor tensorWeights) {
+	private float validate(Session sess, N2V_DataWrapper validationData, Tensor tensorWeights) {
 
 		Pair<RandomAccessibleInterval, RandomAccessibleInterval> item = validationData.getItem(0);
 
@@ -337,6 +349,7 @@ public class N2V implements Command {
 		tensorX.close();
 		tensorY.close();
 		System.out.println("\nValidation loss: " + loss + " abs: " + abs + " mse: " + mse);
+		return loss;
 	}
 
 	public static void progressPercentage( int step, int stepTotal, float loss, float abs, float mse ) {
