@@ -376,9 +376,7 @@ public class N2VTraining {
 			bareDone.append( icon );
 		}
 		String bareRemain = bare.substring( remainProcent );
-		System.out.print( step + "/" + stepTotal + " \t" + bareDone + bareRemain + " - loss: " + loss + " \tmse: " + mse + " \tabs: " + abs );
-		System.out.print( "\n" );
-
+		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs );
 	}
 
 	private Img< FloatType > makeTarget( RandomAccessibleInterval< FloatType > X, long[] targetDims ) {
