@@ -309,7 +309,7 @@ public class N2VTraining {
 		RandomAccessibleInterval<FloatType> output = DatasetTensorFlowConverter.tensorToDataset(outputTensor, new FloatType(), mapping, false);
 
 		updateSplitImage(item.getFirst(), output);
-		updateHistoryImage(output);
+//		updateHistoryImage(output);
 
 		float loss = fetchedTensors.get(1).floatValue();
 		float abs = fetchedTensors.get(2).floatValue();
@@ -346,10 +346,10 @@ public class N2VTraining {
 	}
 
 	private void updateHistoryImage(RandomAccessibleInterval<FloatType> out) {
-		//TODO copying neccessary?
 		for (int i = 2; i < out.numDimensions(); i++) {
 			out = Views.hyperSlice(out, i, 0);
 		}
+		//TODO copying neccessary?
 		RandomAccessibleInterval<FloatType> outXY = opService.copy().rai(out);
 		if(historyImages == null) historyImages = new ArrayList<>();
 		historyImages.add(0, outXY);
