@@ -40,10 +40,10 @@ import org.jfree.data.xy.VectorSeriesCollection;
 
 public class N2VDialog {
 
-	private final static int DEFAULT_WIDTH = 600;
+	private final static int DEFAULT_WIDTH = 500;
 	private final static int DEFAULT_MIN_HEIGHT = 150;
 	private final static int DEFAULT_MAX_HEIGHT = 650;
-	private final static int DEFAULT_CHART_HEIGHT = 400;
+	private final static int DEFAULT_CHART_HEIGHT = 300;
 	private final static int DEFAULT_BAR_WIDTH = 400;
 	private final static int DEFAULT_BAR_HEIGHT = 40;
 	private final static String FRAME_TITLE = "N2V for Fiji";
@@ -77,11 +77,13 @@ public class N2VDialog {
 
 						@Override
 						public void run() {
-							frame.setSize( DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT );
+							frame.setSize( DEFAULT_WIDTH+20, DEFAULT_MIN_HEIGHT );
 							frame.setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE );
 							frame.setLayout( new BorderLayout() );
 
 							frame.add( topPanel, BorderLayout.NORTH );
+							frame.add( chartPanel, BorderLayout.CENTER );
+							chartPanel.setVisible(false);
 							frame.pack();
 							frame.setLocationRelativeTo( null );
 							frame.setVisible( true );
@@ -98,6 +100,7 @@ public class N2VDialog {
 	private void createProgressPanel() {
 		// Progress panel
 		topPanel = new JPanel();
+		topPanel.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_BAR_HEIGHT*3 ) );
 		topPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
 		topPanel.setLayout( new GridBagLayout() );
 
@@ -133,6 +136,7 @@ public class N2VDialog {
 		gbc.gridy = 2;
 		gbc.fill = GridBagConstraints.BOTH;
 		topPanel.add( progressBar, gbc );
+		progressBar.setVisible( false );
 
 	}
 
@@ -176,6 +180,10 @@ public class N2VDialog {
 		data.addSeries( averageLossData );
 		data.addSeries( validationLossData );
 		progressSpinner.setVisible( false );
+		progressBar.setVisible( true );
+		chartPanel.setVisible( true );
+		frame.revalidate();
+		frame.pack();
 	}
 
 	public void updateChart( int nEpoch, List< Double > losses, double validationLoss ) {
@@ -196,14 +204,6 @@ public class N2VDialog {
 			xAxis.setTickUnit( new NumberTickUnit( 1 ) );
 			ValueAxis rangeAxis = plot.getRangeAxis();
 			rangeAxis.setRange( Math.floor( ymin ) - 0.1, Math.ceil( ymax ) + 0.1 );
-			frame.add( chartPanel, BorderLayout.CENTER );
-			topPanel.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT ) );
-			topPanel.revalidate();
-			topPanel.repaint();
-			frame.pack();
-			frame.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_MAX_HEIGHT ) );
-			frame.revalidate();
-			frame.repaint();
 		}
 
 		averageLossData.add( new VectorDataItem( ( double ) nEpoch, averageLoss, 0.0, 0.0 ), true );
