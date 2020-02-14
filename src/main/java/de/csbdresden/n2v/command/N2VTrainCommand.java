@@ -5,6 +5,7 @@ import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
+import org.scijava.Cancelable;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
@@ -16,7 +17,7 @@ import java.io.File;
 import java.io.IOException;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train" )
-public class N2VTrainCommand implements Command {
+public class N2VTrainCommand implements Command, Cancelable {
 
 	@Parameter
 	private RandomAccessibleInterval< FloatType > training;
@@ -55,6 +56,7 @@ public class N2VTrainCommand implements Command {
 	private Context context;
 
 	private N2VTraining n2v;
+	private boolean canceled;
 
 	@Override
 	public void run() {
@@ -75,7 +77,9 @@ public class N2VTrainCommand implements Command {
 		stdDev = n2v.getStdDev().getRealFloat();
 		mean = n2v.getMean().getRealFloat();
 		try {
-			trainedModelPath = n2v.exportTrainedModel().getAbsolutePath();
+			File savedModel = n2v.exportTrainedModel();
+			if(savedModel == null) return;
+			trainedModelPath = savedModel.getAbsolutePath();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -100,5 +104,20 @@ public class N2VTrainCommand implements Command {
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
+	}
+
+	@Override
+	public boolean isCanceled() {
+		return canceled;
+	}
+
+	@Override
+	public void cancel(String reason) {
+		canceled = true;
+	}
+
+	@Override
+	public String getCancelReason() {
+		return null;
 	}
 }

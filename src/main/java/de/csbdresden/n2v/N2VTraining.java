@@ -86,6 +86,7 @@ public class N2VTraining {
 	private boolean stopTraining = false;
 	private RandomAccessibleInterval<FloatType> splitImage;
 	private List<RandomAccessibleInterval<FloatType>> historyImages;
+	private boolean noCheckpointSaved = true;
 
 	public N2VTraining(Context context) {
 		context.inject(this);
@@ -105,6 +106,8 @@ public class N2VTraining {
 
 	public void train() {
 
+		if(stopTraining) return;
+
 		System.out.println( "Create session.." );
 		dialog.updateProgressText("Creating session" );
 		try (Graph graph = new Graph();
@@ -120,11 +123,15 @@ public class N2VTraining {
 				sess.runner().addTarget("init").run();
 			}
 
+			if(stopTraining) return;
+
 			System.out.println("Prepare data for training..");
 			dialog.updateProgressText("Preparing data for training");
 
 			RandomAccessibleInterval<FloatType> _X = Views.concatenate(2, X);
 			RandomAccessibleInterval<FloatType> _validationX = Views.concatenate(2, validationX);
+
+			if(stopTraining) return;
 
 			//		uiService.show("_X", _X);
 			//		uiService.show("_validationX", _validationX);
@@ -172,6 +179,8 @@ public class N2VTraining {
 
 			N2VDataWrapper<FloatType> training_data = new N2VDataWrapper<>(context, _X, target, trainBatchSize, n2v_perc_pix, patch_shape, N2VDataWrapper::uniform_withCP);
 
+			if(stopTraining) return;
+
 			Img<FloatType> validationTarget = makeTarget(_validationX, targetDims);
 
 			N2VDataWrapper<FloatType> validation_data = new N2VDataWrapper<>(context, _validationX,
@@ -187,6 +196,8 @@ public class N2VTraining {
 				weightsdata[i1] = 1;
 			}
 			Tensor<Float> tensorWeights = Tensors.create(weightsdata);
+
+			if(stopTraining) return;
 
 			//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 
@@ -246,7 +257,10 @@ public class N2VTraining {
 
 				}
 				training_data.on_epoch_end();
+
+				if(stopTraining && noCheckpointSaved) return;
 				sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
+				noCheckpointSaved = false;
 
 				float validationLoss = validate(sess, validation_data, tensorWeights);
 
@@ -267,6 +281,7 @@ public class N2VTraining {
 
 	public boolean cancelTraining() {
 		stopTraining = true;
+		if(noCheckpointSaved) dialog.dispose();
 		return true;
 	}
 
@@ -446,6 +461,8 @@ public class N2VTraining {
 
 	public void addTrainingAndValidationData(RandomAccessibleInterval<FloatType> training, double validationAmount) {
 
+		if(stopTraining) return;
+
 		System.out.println( "Normalize and tile training and validation data.." );
 		dialog.updateProgressText("Normalizing and tiling training and validation data" );
 
@@ -465,6 +482,8 @@ public class N2VTraining {
 
 	public void addTrainingData(RandomAccessibleInterval<FloatType> training) {
 
+		if(stopTraining) return;
+
 		System.out.println( "Normalize and tile training data.." );
 		dialog.updateProgressText("Normalizing and tiling training data" );
 
@@ -477,6 +496,8 @@ public class N2VTraining {
 	}
 
 	public void addValidationData(RandomAccessibleInterval<FloatType> validation) {
+
+		if(stopTraining) return;
 
 		System.out.println( "Normalize and tile validation data.." );
 		dialog.updateProgressText("Normalizing and tiling validation data" );
@@ -542,6 +563,7 @@ public class N2VTraining {
 	}
 
 	public File exportTrainedModel() throws IOException {
+		if(noCheckpointSaved) return null;
 		return N2VUtils.saveTrainedModel(modelDir);
 	}
 
@@ -551,5 +573,9 @@ public class N2VTraining {
 
 	public FloatType getStdDev() {
 		return stdDev;
+	}
+
+	public boolean isCanceled() {
+		return stopTraining;
 	}
 }

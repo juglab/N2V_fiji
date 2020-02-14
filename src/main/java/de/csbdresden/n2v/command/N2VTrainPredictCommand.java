@@ -53,12 +53,11 @@ public class N2VTrainPredictCommand implements Command {
 	@Override
 	public void run() {
 
-		runTraining();
-		runPrediction();
+		if(runTraining()) runPrediction();
 
 	}
 
-	private void runTraining() {
+	private boolean runTraining() {
 		try {
 			final CommandModule module = commandService.run(
 					N2VTrainCommand.class, false,
@@ -70,11 +69,14 @@ public class N2VTrainPredictCommand implements Command {
 					"batchDimLength", batchDimlength,
 					"patchDimLength", patchDimlength).get();
 			trainedModelPath = (String) module.getOutput("trainedModelPath");
+			if(trainedModelPath == null) return false;
 			mean = (float) module.getOutput("mean");
 			stdDev = (float) module.getOutput("stdDev");
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
+			return false;
 		}
+		return true;
 	}
 
 	private void runPrediction() {

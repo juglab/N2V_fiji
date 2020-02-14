@@ -236,4 +236,8 @@ public class N2VDialog {
 		progressBar.setValue( remainPercent );
 		progressBar.setString( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps );
 	}
+
+	public void dispose() {
+		frame.dispose();
+	}
 }
