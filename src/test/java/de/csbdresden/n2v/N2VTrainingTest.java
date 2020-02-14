@@ -27,7 +27,8 @@ public class N2VTrainingTest {
 		n2v.setNumEpochs(2);
 		n2v.setStepsPerEpoch(2);
 		n2v.setBatchSize((int) batchSize);
-		n2v.setPatchDimLength(32);
+		n2v.setBatchDimLength(32);
+		n2v.setPatchDimLength(16);
 		n2v.addTrainingData(trainingBatches);
 		n2v.addValidationData(validationBatches);
 		n2v.train();
