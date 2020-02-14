@@ -58,7 +58,7 @@ public class N2VPredictCommand implements Command {
 					"modelFile", zip.getAbsolutePath(),
 					"blockMultiple", 8,
 					"nTiles", 8,
-					"overlap", 64,
+					"overlap", 32,
 					"showProgressDialog", true).get();
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 			N2VUtils.denormalizeInplace(output, new FloatType(mean), new FloatType(stdDev), opService);
