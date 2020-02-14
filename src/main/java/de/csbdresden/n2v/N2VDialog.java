@@ -109,6 +109,8 @@ public class N2VDialog {
 
 			@Override
 			public void actionPerformed( ActionEvent e ) {
+				cancelBtn.setText("Training canceled.");
+				cancelBtn.setEnabled(false);
 				n2v.cancelTraining();
 			}
 
