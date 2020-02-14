@@ -161,6 +161,7 @@ public class N2VDialog {
 		plot.setRangeCrosshairVisible( true );
 		plot.setDomainAxis( new NumberAxis() );
 		plot.setRangeAxis( new NumberAxis() );
+		plot.getRangeAxis().setAutoRange(true);
 
 		XYItemRenderer r = plot.getRenderer();
 		if ( r instanceof XYLineAndShapeRenderer ) {
@@ -175,7 +176,7 @@ public class N2VDialog {
 	public void initChart( int nEpochs, int nEpochSteps ) {
 		this.nEpochSteps = nEpochSteps;
 		this.nEpochs = nEpochs;
-		averageLossData = new VectorSeries( "AverageLoss" );
+		averageLossData = new VectorSeries( "Average Loss" );
 		validationLossData = new VectorSeries( "Validation Loss" );
 		data.addSeries( averageLossData );
 		data.addSeries( validationLossData );
@@ -196,14 +197,10 @@ public class N2VDialog {
 
 		if ( nEpoch == 1 ) {
 			// Size axis to zoom onto first epoch data
-			double ymax = Collections.max( losses );
-			double ymin = Collections.min( losses );
 			NumberAxis xAxis = ( NumberAxis ) plot.getDomainAxis();
 			xAxis.setStandardTickUnits( NumberAxis.createIntegerTickUnits() );
 			xAxis.setRange( 1.0, nEpochs );
-			xAxis.setTickUnit( new NumberTickUnit( 1 ) );
-			ValueAxis rangeAxis = plot.getRangeAxis();
-			rangeAxis.setRange( Math.floor( ymin ) - 0.1, Math.ceil( ymax ) + 0.1 );
+			xAxis.setTickUnit( new NumberTickUnit( 10 ) );
 		}
 
 		averageLossData.add( new VectorDataItem( ( double ) nEpoch, averageLoss, 0.0, 0.0 ), true );
