@@ -1,6 +1,7 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.command;
 
 import de.csbdresden.csbdeep.commands.GenericNetwork;
+import de.csbdresden.n2v.N2VUtils;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
@@ -16,8 +17,8 @@ import org.scijava.plugin.Plugin;
 import java.io.File;
 import java.util.concurrent.ExecutionException;
 
-@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V prediction" )
-public class N2VPredictionCommand implements Command {
+@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>predict" )
+public class N2VPredictCommand implements Command {
 
 	@Parameter
 	private RandomAccessibleInterval< FloatType > prediction;
@@ -29,6 +30,12 @@ public class N2VPredictionCommand implements Command {
 	private File modelFile;
 
 	@Parameter
+	float mean;
+
+	@Parameter
+	float stdDev;
+
+	@Parameter
 	private CommandService commandService;
 
 	@Parameter
@@ -37,12 +44,7 @@ public class N2VPredictionCommand implements Command {
 	@Override
 	public void run() {
 
-		FloatType mean = new FloatType();
-		mean.set( opService.stats().mean( Views.iterable( prediction ) ).getRealFloat() );
-		FloatType stdDev = new FloatType();
-		stdDev.set( opService.stats().stdDev( Views.iterable( prediction ) ).getRealFloat() );
-
-		prediction = N2VUtils.normalize( prediction, mean, stdDev, opService );
+		prediction = N2VUtils.normalize( prediction, new FloatType(mean), new FloatType(stdDev), opService );
 
 		File zip = modelFile;
 
@@ -59,6 +61,7 @@ public class N2VPredictionCommand implements Command {
 					"overlap", 64,
 					"showProgressDialog", true).get();
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
+			N2VUtils.denormalizeInplace(output, new FloatType(mean), new FloatType(stdDev), opService);
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
@@ -72,9 +75,9 @@ public class N2VPredictionCommand implements Command {
 
 //		ij.log().setLevel(LogLevel.TRACE);
 
-		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/testmodel.zip");
+		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/CSBDeep-N2V/src/main/resources/trained-model.zip");
 
-		final File predictionInput = new File( "/home/random/Development/imagej/project/CSBDeep/train.tif" );
+		final File predictionInput = new File( "/home/random/Development/python/n2v/examples/2D/denoising2D_BSD68/data/BSD68_reproducibility_data/val/DCNN400_validation_gaussian25.tif" );
 
 		if ( predictionInput.exists() ) {
 			RandomAccessibleInterval _input = ( RandomAccessibleInterval ) ij.io().open( predictionInput.getAbsolutePath() );
@@ -83,7 +86,7 @@ public class N2VPredictionCommand implements Command {
 
 			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
 
-			CommandModule plugin = ij.command().run( N2VPredictionCommand.class, false,
+			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false,
 					"prediction", prediction, "modelFile", modelFile ).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else

@@ -10,7 +10,9 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.ValuePair;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.apache.commons.math3.util.Pair;
@@ -23,10 +25,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
+public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 
-	private final Img<T> X_Batches;
-	private final Img<T> Y_Batches;
+	private final Img<T> X_Patches;
+	private final Img<T> Y_Patches;
 	@Parameter
 	OpService opService;
 
@@ -51,7 +53,7 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 		return c.accept(patch, coord, dims);
 	}
 
-	public N2V_DataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, double perc_pix, Dimensions shape, ValueManipulatorConsumer<T> manipulator) {
+	public N2VDataWrapper(Context context, RandomAccessibleInterval<T> X, RandomAccessibleInterval<T> Y, int batch_size, double perc_pix, Dimensions shape, ValueManipulatorConsumer<T> manipulator) {
 
 		context.inject(this);
 
@@ -76,8 +78,8 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 //            self.patch_sampler = self.__subpatch_sampling2D__
 		this.box_size = Math.round(Math.sqrt(shape.dimension(0) * shape.dimension(1) / (float)num_pix));
 //            self.get_stratified_coords = self.__get_stratified_coords2D__
-		this.X_Batches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, X.dimension(3)), X.randomAccess().get().copy());
-		this.Y_Batches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, Y.dimension(3)), X.randomAccess().get().copy());
+		this.X_Patches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, X.dimension(3)), X.randomAccess().get().copy());
+		this.Y_Patches = opService.create().img(new FinalDimensions(shape.dimension(0), shape.dimension(1), batch_size, Y.dimension(3)), X.randomAccess().get().copy());
 
 		this.manipulator = manipulator;
 	}
@@ -88,73 +90,67 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 
 	public void on_epoch_end() {
 		perm = generateRandom((int) X.dimension(2));
-		T zero = X_Batches.randomAccess().get().copy();
+		T zero = X_Patches.randomAccess().get().copy();
 		zero.setZero();
-		opService.math().multiply((RandomAccessibleInterval<T>) X_Batches, X_Batches, zero);
-		opService.math().multiply((RandomAccessibleInterval<T>) Y_Batches, Y_Batches, zero);
+		opService.math().multiply((RandomAccessibleInterval<T>) X_Patches, X_Patches, zero);
+		opService.math().multiply((RandomAccessibleInterval<T>) Y_Patches, Y_Patches, zero);
 	}
 
 	public Pair<RandomAccessibleInterval, RandomAccessibleInterval> getItem(int i) {
-//		System.out.println("------------- item " + i);
         int[] idx = new int[batch_size];
 		for (int j = 0; j < idx.length; j++) {
 			idx[j] = perm.get(i * batch_size + j);
 		}
-        subpatch_sampling2D(idx);
 
-		perm = generateRandom((int) X.dimension(2));
-		T zero = X_Batches.randomAccess().get().copy();
-		zero.setZero();
-		opService.math().multiply((RandomAccessibleInterval<T>) Y_Batches, Y_Batches, zero);
+		Pair<RandomAccessibleInterval, RandomAccessibleInterval> patches = subpatch_sampling2D(idx);
+
+//		perm = generateRandom((int) X.dimension(2));
+//		T zero = X_Batches.randomAccess().get().copy();
+//		zero.setZero();
+//		opService.math().multiply((RandomAccessibleInterval<T>) Y_Batches, Y_Batches, zero);
 
 //		opService.context().getService(UIService.class).show("x batches", X_Batches);
 
-		for (int j = 0; j < idx.length; j++) {
+		for (int j = 0; j < patches.getFirst().dimension(2); j++) {
 //            for c in range(self.n_chan):
-
-			manipulateY(j, box_size, shape, X_Batches, Y_Batches, dims, n_chan, manipulator);
+			manipulateY(box_size, shape, Views.hyperSlice(patches.getFirst(), 2, j), Views.hyperSlice(patches.getSecond(), 2, j), dims, n_chan, manipulator);
 		}
-		//TODO the current return value seems wrong
-		//self.X_Batches[idx], self.Y_Batches[idx]
-//		return new Pair<>(X_Batches, Y_Batches);
-		//TODO this should probably not be copied
-		return new Pair<>(opService.copy().rai(X_Batches), opService.copy().rai(Y_Batches));
+		return patches;
 	}
 
-	static <T extends RealType<T> & NativeType<T>> void manipulateY(int j, long box_size, Dimensions shape, RandomAccessibleInterval<T> X_Batches, RandomAccessibleInterval<T> Y_Batches, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
+	static <T extends RealType<T> & NativeType<T>> void manipulateY(long box_size, Dimensions shape, RandomAccessibleInterval<T> X_Patch, RandomAccessibleInterval<T> Y_Patch, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
 		int c = 0;
 		List<Point> coords = get_stratified_coords(box_size, shape);
-//                                                    shape=np.array(self.X_Batches.shape)[1:-1])
+//                                                    shape=np.array(self.X_Patch.shape)[1:-1])
 
 		double[] x_val = new double[coords.size()];
-		double[] y_val = new double[coords.size()];
-		RandomAccess<T> batchXRA = X_Batches.randomAccess();
-		RandomAccess<T> batchYRA = Y_Batches.randomAccess();
+		double[] originalValue = new double[coords.size()];
+		RandomAccess<T> batchXRA = X_Patch.randomAccess();
+		RandomAccess<T> batchYRA = Y_Patch.randomAccess();
 		for (int k = 0; k < coords.size(); k++) {
 
 			long xpos = coords.get(k).getLongPosition(0);
 			long ypos = coords.get(k).getLongPosition(1);
 
-			batchXRA.setPosition(new long[]{xpos, ypos, j, c});
-			y_val[k] = batchXRA.get().getRealDouble();
+			batchXRA.setPosition(new long[]{xpos, ypos, c});
+			originalValue[k] = batchXRA.get().getRealDouble();
 
-			IntervalView<T> XInterval = Views.hyperSlice(X_Batches, 2, j);
-			XInterval = Views.hyperSlice(XInterval, 2, c);
+			IntervalView<T> XInterval = Views.hyperSlice(X_Patch, 2, c);
 			XInterval = Views.addDimension(XInterval, 0, 0);
 			x_val[k] = value_manipulate(manipulator, XInterval, coords.get(k), dims);
 		}
 
-		for (int k = 0; k < y_val.length; k++) {
+		for (int k = 0; k < originalValue.length; k++) {
 			long xpos = coords.get(k).getLongPosition(0);
 			long ypos = coords.get(k).getLongPosition(1);
 
-			batchYRA.setPosition(new long[]{xpos, ypos, j, c});
-			batchYRA.get().setReal(y_val[k]);
+			batchYRA.setPosition(new long[]{xpos, ypos, c});
+			batchYRA.get().setReal(originalValue[k]);
 
-			batchYRA.setPosition(new long[]{xpos, ypos, j, c+n_chan});
+			batchYRA.setPosition(new long[]{xpos, ypos, c+n_chan});
 			batchYRA.get().setOne();
 
-			batchXRA.setPosition(new long[]{xpos, ypos, j, c});
+			batchXRA.setPosition(new long[]{xpos, ypos, c});
 			batchXRA.get().setReal(x_val[k]);
 		}
 	}
@@ -213,26 +209,53 @@ public class N2V_DataWrapper <T extends RealType<T> & NativeType<T>> {
 
 	}
 
-	private void subpatch_sampling2D(int[] idx) {
+	private Pair<RandomAccessibleInterval, RandomAccessibleInterval> subpatch_sampling2D(int[] idx) {
+
+		List<RandomAccessibleInterval<T>> X_Patches = new ArrayList<>();
+		List<RandomAccessibleInterval<T>> Y_Patches = new ArrayList<>();
 
 		Random r = new Random();
 	    for (int i = 0; i < idx.length; i++) {
 		    int j = idx[i];
 		    int x_start = r.nextInt((int) (range.dimension(0) + 1));
 		    int y_start = r.nextInt((int) (range.dimension(1) + 1));
-		    setBatch(X_Batches, i, X,
-				    new FinalInterval(
-						    new long[]{x_start, y_start, j, 0},
-						    new long[]{x_start + shape.dimension(0)-1, y_start + shape.dimension(1)-1, j, 0}));
-		    setBatch(Y_Batches, i, Y,
-				    new FinalInterval(
-						    new long[]{x_start, y_start, j, 0},
-						    new long[]{x_start + shape.dimension(0)-1, y_start + shape.dimension(1)-1, j, 0}));
+		    FinalInterval intervalX = new FinalInterval(
+				    new long[]{x_start, y_start, j, 0},
+				    new long[]{x_start + shape.dimension(0) - 1, y_start + shape.dimension(1) - 1, j, 0});
+		    RandomAccessibleInterval<T> patch = getPatch(X, intervalX);
+		    X_Patches.add(patch);
+		    FinalInterval intervalY = new FinalInterval(shape.dimension(0), shape.dimension(1), 1, 2);
+		    Y_Patches.add(opService.create().img(intervalY, patch.randomAccess().get()));
 //	    Y_Batches[j] = Y[j, y_start:y_start + shape[0], x_start:x_start + shape[1]]
 	    }
-    }
+		return new Pair<>(Views.concatenate(2, X_Patches), Views.concatenate(2, Y_Patches));
+	}
 
-	private void setBatch(Img<T> batches, int numBatch, RandomAccessibleInterval<T> source, FinalInterval interval) {
+	private RandomAccessibleInterval<T> getPatch(RandomAccessibleInterval<T> source, FinalInterval interval) {
+		FinalInterval resInterval = new FinalInterval(interval.dimension(0), interval.dimension(1), interval.dimension(2), interval.dimension(3));
+		RandomAccessibleInterval<T> res = opService.create().img(resInterval, source.randomAccess().get());
+		RandomAccess<T> ra = res.randomAccess();
+		RandomAccess<T> raSource = source.randomAccess();
+//		System.out.println("res: " + Arrays.toString(Intervals.dimensionsAsIntArray(res)));
+//		System.out.println("source: " + Arrays.toString(Intervals.dimensionsAsIntArray(source)));
+//		System.out.println("interval: " + Arrays.toString(Intervals.dimensionsAsIntArray(interval)));
+		for (long i = interval.min(0); i < interval.max(0); i++) {
+			for (long j = interval.min(1); j < interval.max(1); j++) {
+				long[] positionPatch = {i-interval.min(0), j-interval.min(1), 0, 0};
+				long[] positionSource = {i, j, interval.min(2), 0};
+//				System.out.println("pos patch: " + Arrays.toString(positionPatch));
+//				System.out.println("pos source: " + Arrays.toString(positionSource));
+				ra.setPosition(positionPatch);
+				raSource.setPosition(positionSource);
+//				System.out.println(ra.get());
+//				System.out.println(raSource.get());
+				ra.get().set(raSource.get());
+			}
+		}
+		return res;
+	}
+
+	private void setPatch(Img<T> batches, int numBatch, RandomAccessibleInterval<T> source, FinalInterval interval) {
 		RandomAccess<T> ra = batches.randomAccess();
 		RandomAccess<T> raSource = source.randomAccess();
 //		System.out.println("batches: " + Arrays.toString(Intervals.dimensionsAsIntArray(batches)));

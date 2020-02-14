@@ -12,28 +12,28 @@ import java.util.List;
 
 public class N2VDataGenerator {
 
-	public static <T extends RealType<T>> List<RandomAccessibleInterval<T>> generatePatchesFromList(List<RandomAccessibleInterval<T>> data, Interval shape) {
+	public static <T extends RealType<T>> List<RandomAccessibleInterval<T>> generateBatchesFromList(List<RandomAccessibleInterval<T>> data, Interval shape) {
 
 		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
 
-		data.forEach(img -> res.addAll(generatePatches(img, shape)));
+		data.forEach(img -> res.addAll(generateBatches(img, shape)));
 
-//		Collections.shuffle(res);
+		Collections.shuffle(res);
 
 		return res;
 
 	}
 
-	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> generatePatches(RandomAccessibleInterval<T> img, Interval shape) {
+	static <T extends RealType<T>> List<RandomAccessibleInterval<T>> generateBatches(RandomAccessibleInterval<T> img, Interval shape) {
 
-		List<RandomAccessibleInterval<T>> patches = extractPatches(img, shape);
+		List<RandomAccessibleInterval<T>> patches = extractBatches(img, shape);
 
 		if(shape.dimension(0) == shape.dimension(1)) {
 			//share in XY
-			augmentPatches(patches);
+			augmentBatches(patches);
 		}
 
-		Collections.shuffle(patches);
+//		Collections.shuffle(patches);
 
 		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
 		patches.forEach(patch -> {
@@ -45,11 +45,28 @@ public class N2VDataGenerator {
 		return res;
 	}
 
-	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> extractPatches(RandomAccessibleInterval<T> img, Interval shape) {
+	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> extractBatches(RandomAccessibleInterval<T> img, Interval shape) {
+		if(img.numDimensions() == 2) return extractBatches2D(img, shape);
+		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
+		for (int i = 0; i < img.dimension(2); i++) {
+			IntervalView<T> img1 = Views.hyperSlice(img, 2, i);
+			if(img.numDimensions() == 3) {
+				res.addAll(extractBatches2D(img1, shape));
+			} else {
+				for (int j = 0; j < img.dimension(3); j++) {
+					IntervalView<T> img2 = Views.hyperSlice(img1, 3, j);
+					res.addAll(extractBatches2D(img2, shape));
+				}
+			}
+		}
+		return res;
+	}
+
+	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> extractBatches2D(RandomAccessibleInterval<T> img, Interval shape) {
 		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
 		if(img.dimension(0) > shape.dimension(0) && img.dimension(1) > shape.dimension(1)) {
-			for (int y = 0; y < img.dimension(1) - shape.dimension(1)-1; y+=shape.dimension(1)) {
-				for (int x = 0; x < img.dimension(0) - shape.dimension(0)-1; x+=shape.dimension(0)) {
+			for (int y = 0; y <= img.dimension(1) - shape.dimension(1); y+=shape.dimension(1)) {
+				for (int x = 0; x <= img.dimension(0) - shape.dimension(0); x+=shape.dimension(0)) {
 					long[] min = {x, y};
 					long[] max = {x + shape.dimension(0)-1, y + shape.dimension(1)-1};
 //					System.out.println(res.size() + ": " + Arrays.toString(min) + " -> " + Arrays.toString(max));
@@ -68,19 +85,19 @@ public class N2VDataGenerator {
 		return res;
 	}
 
-	private static <T extends RealType<T>> void augmentPatches(List<RandomAccessibleInterval<T>> patches) {
+	static <T extends RealType<T>> void augmentBatches(List<RandomAccessibleInterval<T>> batches) {
 		List<RandomAccessibleInterval<T>> augmented = new ArrayList<>();
-		patches.forEach(patch -> {
-			IntervalView<T> r1 = Views.rotate(patch, 0, 1);
-			IntervalView<T> r2 = Views.rotate(r1, 0, 1);
+		batches.forEach(patch -> {
+			IntervalView<T> r1 = Views.zeroMin(Views.rotate(patch, 0, 1));
+			IntervalView<T> r2 = Views.zeroMin(Views.rotate(r1, 0, 1));
 			augmented.add(r1);
 			augmented.add(r2);
-			augmented.add(Views.rotate(r2, 0, 1));
+			augmented.add(Views.zeroMin(Views.rotate(r2, 0, 1)));
 		});
-		patches.addAll(augmented);
-		augmented.clear();
-		patches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
-		patches.addAll(augmented);
+		batches.addAll(augmented);
+////		augmented.clear();
+////		batches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
+////		batches.addAll(augmented);
 	}
 
 }

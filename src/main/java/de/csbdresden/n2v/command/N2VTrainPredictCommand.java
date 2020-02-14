@@ -1,10 +1,9 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.command;
 
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
-import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
@@ -13,11 +12,10 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V" )
-public class N2V implements Command {
+@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train + predict" )
+public class N2VTrainPredictCommand implements Command {
 
 	@Parameter
 	private RandomAccessibleInterval< FloatType > training;
@@ -28,58 +26,69 @@ public class N2V implements Command {
 	@Parameter( type = ItemIO.OUTPUT )
 	private RandomAccessibleInterval< FloatType > output;
 
-	@Parameter
-	int numEpochs = 20;
+	@Parameter(type = ItemIO.OUTPUT)
+	private String trainedModelPath;
 
 	@Parameter
-	int numStepsPerEpoch = 20;
+	int numEpochs = 300;
 
 	@Parameter
-	int batchSize = 128;
+	int numStepsPerEpoch = 200;
+
+	@Parameter
+	int batchSize = 180;
+
+	@Parameter
+	int batchDimlength = 180;
+
+	@Parameter
+	int patchDimlength = 60;
 
 	@Parameter
 	private CommandService commandService;
 
-	@Parameter
-	private Context context;
-
-	private File trainedModelZip;
+	private float mean;
+	private float stdDev;
 
 	@Override
 	public void run() {
 
 		runTraining();
-		runPrediction( prediction );
+		runPrediction();
 
 	}
 
 	private void runTraining() {
-		N2VTraining n2v = new N2VTraining(context);
-		n2v.init();
-		n2v.setNumEpochs(numEpochs);
-		n2v.setStepsPerEpoch(numStepsPerEpoch);
-		n2v.setBatchSize(batchSize);
-		n2v.addTrainingData(training);
-		n2v.train();
 		try {
-			trainedModelZip = n2v.exportTrainedModel();
-		} catch (IOException e) {
+			final CommandModule module = commandService.run(
+					N2VTrainCommand.class, false,
+					"training", training,
+					"validation", prediction,
+					"numStepsPerEpoch", numStepsPerEpoch,
+					"numEpochs", numEpochs,
+					"batchSize", batchSize,
+					"batchDimLength", batchDimlength,
+					"patchDimLength", patchDimlength).get();
+			trainedModelPath = (String) module.getOutput("trainedModelPath");
+			mean = (float) module.getOutput("mean");
+			stdDev = (float) module.getOutput("stdDev");
+		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void runPrediction( RandomAccessibleInterval< FloatType > inputRAI ) {
-
+	private void runPrediction() {
 		try {
 			final CommandModule module = commandService.run(
-					N2VPredictionCommand.class, false,
-					"prediction", inputRAI,
-					"modelFile", trainedModelZip.getAbsolutePath()).get();
+					N2VPredictCommand.class, false,
+					"prediction", prediction,
+					"mean", mean,
+					"stdDev", stdDev,
+					"modelFile", new File(trainedModelPath)).get();
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	public static void main( final String... args ) throws Exception {
@@ -97,8 +106,7 @@ public class N2V implements Command {
 			RandomAccessibleInterval training = ij.op().copy().rai( _inputConverted );
 			RandomAccessibleInterval prediction = training;
 
-			CommandModule plugin = ij.command().run( N2V.class, true,"training", training, "prediction", prediction).get();
-			ij.ui().show( plugin.getOutput( "output" ) );
+			ij.command().run( N2VTrainPredictCommand.class, true,"training", training, "prediction", prediction).get();
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
