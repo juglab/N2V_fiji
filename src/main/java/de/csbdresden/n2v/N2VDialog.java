@@ -232,15 +232,8 @@ public class N2VDialog {
 	}
 
 	public void updateProgress( int epoch, int step ) {
-		int maxBareSize = 10; // 10unit for 100%
+		int maxBareSize = 1; // 10unit for 100%
 		int remainPercent = ( ( 100 * step ) / nEpochSteps ) / maxBareSize;
-		if ( currentColor == Color.BLUE ) {
-			progressBar.setForeground( Color.GREEN );
-			currentColor = Color.GREEN;
-		} else {
-			progressBar.setForeground( Color.BLUE );
-			currentColor = Color.BLUE;
-		}
 		progressBar.setValue( remainPercent );
 		progressBar.setString( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps );
 	}
