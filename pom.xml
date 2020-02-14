@@ -120,9 +120,8 @@
 		
 		<!-- Graphing dependency -->
 		<dependency>
-			<groupId>org.knowm.xchart</groupId>
-			<artifactId>xchart</artifactId>
-			<version>3.6.1</version>
+			<groupId>org.jfree</groupId>
+			<artifactId>jfreechart</artifactId>
 		</dependency>
 		
 		<!-- Test dependencies -->

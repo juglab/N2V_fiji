@@ -9,31 +9,34 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BorderFactory;
-import javax.swing.InputVerifier;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.JSplitPane;
-import javax.swing.JTextField;
+import javax.swing.LookAndFeel;
 import javax.swing.SwingConstants;
+import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
-import org.knowm.xchart.XChartPanel;
-import org.knowm.xchart.XYChart;
-import org.knowm.xchart.XYSeries;
-import org.knowm.xchart.style.colors.XChartSeriesColors;
-import org.knowm.xchart.style.lines.SeriesLines;
-import org.knowm.xchart.style.markers.SeriesMarkers;
-
-import net.miginfocom.swing.MigLayout;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.NumberTickUnit;
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.data.xy.VectorDataItem;
+import org.jfree.data.xy.VectorSeries;
+import org.jfree.data.xy.VectorSeriesCollection;
 
 public class N2VDialog {
 
@@ -42,31 +45,31 @@ public class N2VDialog {
 	private final static int DEFAULT_MAX_HEIGHT = 650;
 	private final static int DEFAULT_CHART_HEIGHT = 400;
 	private final static int DEFAULT_BAR_WIDTH = 400;
-	private final static int DEFAULT_BAR_HEIGHT = 20;
-	private static String title = "N2V for Fiji";
-	private static String chartTitle = "Epochal Losses";
-	private static String xAxisTitle = "Epoch";
-	private static String yAxisTitle = "Loss";
+	private final static int DEFAULT_BAR_HEIGHT = 40;
+	private final static String FRAME_TITLE = "N2V for Fiji";
+	private final static String CHART_TITLE = "Epochal Losses";
+	private final static String XAXIS_LABEL = "Epoch";
+	private final static String YAXIS_LABEL = "Loss";
 
-	private XYChart chart = null;
-	private XChartPanel< XYChart > chartPanel = null;
+	private ChartPanel chartPanel = null;
 	private int nEpochSteps;
-	List< Double > epochData = null;
-	List< Double > averageLossData = null;
-	List< Double > validationLossData = null;
-	protected JProgressBar progressBar;
+	private VectorSeries averageLossData = null;
+	private VectorSeries validationLossData = null;
+	private JProgressBar progressBar;
 	private int nEpochs;
-	protected JSplitPane splitPane;
 	private JFrame frame;
-	protected JLabel message;
-	protected JButton rescaleBtn;
-	protected JPanel bottomPanel;
-	protected JPanel topPanel;
+	private JPanel topPanel;
 	private N2V n2v;
+	private VectorSeriesCollection data;
+	private XYPlot plot;
+	private JLabel progressSpinner;
+	private Color currentColor = Color.BLUE;
 
-	public N2VDialog( final N2V n2v) {
-		this.n2v = n2v;
-		frame = new JFrame( title );
+	public N2VDialog() {
+		createProgressPanel();
+		createChartPanel();
+
+		frame = new JFrame( FRAME_TITLE );
 		try {
 			javax.swing.SwingUtilities.invokeAndWait(
 					new Runnable() {
@@ -74,12 +77,9 @@ public class N2VDialog {
 						@Override
 						public void run() {
 							frame.setSize( DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT );
-							frame.setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE );
+							frame.setDefaultCloseOperation( WindowConstants.DISPOSE_ON_CLOSE );
 							frame.setLayout( new BorderLayout() );
-								
-							createProgressPanel();
-							createChartPanel();
-							
+
 							frame.add( topPanel, BorderLayout.NORTH );
 							frame.pack();
 							frame.setLocationRelativeTo( null );
@@ -93,95 +93,88 @@ public class N2VDialog {
 		}
 
 	}
-	
-	private void createProgressPanel()
-	{
+
+	private void createProgressPanel() {
 		// Progress panel
 		topPanel = new JPanel();
-		topPanel.setBorder( BorderFactory.createEmptyBorder(5, 5, 10, 5));
-		topPanel.setLayout( new GridBagLayout());
-	    GridBagConstraints gbc = new GridBagConstraints();
-	    gbc.anchor = GridBagConstraints.CENTER;
-	    gbc.fill = GridBagConstraints.NONE;
-	    gbc.insets = new Insets(5,5,5,5);
-	    gbc.gridy = 0;
-	    
-		message = new JLabel();
-		topPanel.add( message, gbc );
-		
-	    gbc.gridy = 1;
-	    gbc.insets = new Insets(0,10,0,10);
-	    gbc.fill = GridBagConstraints.HORIZONTAL;
-		progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
-		progressBar.setPreferredSize( new Dimension(DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT));
-		progressBar.setIndeterminate( true );
-		progressBar.setVisible( true );
-		topPanel.add( progressBar, gbc );
-		
-	    gbc.gridy = 2;
-	    gbc.insets = new Insets(5,5,5,5);
-	    gbc.fill = GridBagConstraints.NONE;
+		topPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
+		topPanel.setLayout( new GridBagLayout() );
+
 		JButton cancelBtn = new JButton( "Cancel Training" );
 		cancelBtn.addActionListener( new ActionListener() {
 
 			@Override
 			public void actionPerformed( ActionEvent e ) {
-				if (n2v.cancelTraining()) {
-					//TODO reset UI
-				}
+				System.exit( 0 );
 			}
 
 		} );
+
+		ImageIcon animatedIcon = new ImageIcon( N2VDialog.class.getClassLoader().getResource( "hard-workout.gif" ) );
+		progressSpinner = new JLabel( "", animatedIcon, JLabel.CENTER );
+		LookAndFeel lf = UIManager.getLookAndFeel();
+		UIManager.put( "ProgressBarUI", "javax.swing.plaf.metal.MetalProgressBarUI" );
+		progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
+		progressBar.setPreferredSize( new Dimension( DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT ) );
+		progressBar.setStringPainted( true );
+
+		// Place components
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.insets = new Insets( 5, 5, 5, 5 );
+		gbc.gridy = 0;
 		topPanel.add( cancelBtn, gbc );
+
+		gbc.gridy = 1;
+		topPanel.add( progressSpinner, gbc );
+
+		gbc.gridy = 2;
+		gbc.fill = GridBagConstraints.BOTH;
+		topPanel.add( progressBar, gbc );
+
 	}
-	
-	private void createChartPanel()
-	{
-		bottomPanel = new JPanel();
-		bottomPanel.setLayout( new BorderLayout() );
-		bottomPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 10, 5));
-		
+
+	private void createChartPanel() {
+
 		// Basic chart layout
-		chart = new XYChart( DEFAULT_WIDTH, DEFAULT_CHART_HEIGHT);
-		chart.setTitle( chartTitle );
-		chart.setXAxisTitle( xAxisTitle );
-		chart.setYAxisTitle( yAxisTitle );
-		chartPanel = new XChartPanel< XYChart >( chart );
-		chartPanel.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_CHART_HEIGHT));
-		bottomPanel.add( chartPanel, BorderLayout.CENTER );
+		data = new VectorSeriesCollection();
+		JFreeChart chart = ChartFactory.createTimeSeriesChart( CHART_TITLE, XAXIS_LABEL, YAXIS_LABEL, data );
+		chart.setBackgroundPaint( Color.WHITE );
+		chartPanel = new ChartPanel( chart, false );
+		chartPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
+		chartPanel.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_CHART_HEIGHT ) );
+		chartPanel.setFillZoomRectangle( true );
+		chartPanel.setMouseWheelEnabled( true );
 
-		// Inputs for re-scaling y axis
-		JPanel scalePanel = new JPanel();
-		scalePanel.add( new JLabel( "ymin" ) );
-		JTextField yminTF = new JTextField( 5 );
-		yminTF.setInputVerifier( new TFInputVerifier() );
-		scalePanel.add( yminTF );
-		scalePanel.add( new JLabel( "ymax" ) );
-		JTextField ymaxTF = new JTextField( 5 );
-		ymaxTF.setInputVerifier( new TFInputVerifier() );
-		scalePanel.add( ymaxTF );
-		rescaleBtn = new JButton( "Rescale" );
-		rescaleBtn.addActionListener( new ActionListener() {
+		plot = ( XYPlot ) chart.getPlot();
+		plot.setBackgroundPaint( Color.LIGHT_GRAY );
+		plot.setDomainGridlinePaint( Color.WHITE );
+		plot.setRangeGridlinePaint( Color.WHITE );
+		plot.setAxisOffset( new RectangleInsets( 5.0, 5.0, 5.0, 5.0 ) );
+		plot.setDomainCrosshairVisible( true );
+		plot.setRangeCrosshairVisible( true );
+		plot.setDomainAxis( new NumberAxis() );
+		plot.setRangeAxis( new NumberAxis() );
 
-			@Override
-			public void actionPerformed( ActionEvent e ) {
-				chart.getStyler().setYAxisMin( Double.valueOf( yminTF.getText() ) );
-				chart.getStyler().setYAxisMax( Double.valueOf( ymaxTF.getText() ) );
-				chartPanel.revalidate();
-				chartPanel.repaint();
-			}
+		XYItemRenderer r = plot.getRenderer();
+		if ( r instanceof XYLineAndShapeRenderer ) {
+			XYLineAndShapeRenderer renderer = ( XYLineAndShapeRenderer ) r;
+			renderer.setDefaultShapesVisible( true );
+			renderer.setDefaultShapesFilled( true );
+			renderer.setDrawSeriesLineAsPath( true );
+		}
 
-		} );
-		scalePanel.add( rescaleBtn );
-		bottomPanel.add( scalePanel, BorderLayout.SOUTH );
 	}
 
 	public void initChart( int nEpochs, int nEpochSteps ) {
 		this.nEpochSteps = nEpochSteps;
 		this.nEpochs = nEpochs;
-		epochData = new ArrayList< Double >();
-		averageLossData = new ArrayList<>();
-		validationLossData = new ArrayList<>();
+		averageLossData = new VectorSeries( "AverageLoss" );
+		validationLossData = new VectorSeries( "Validation Loss" );
+		data.addSeries( averageLossData );
+		data.addSeries( validationLossData );
+		progressSpinner.setVisible( false );
 	}
 
 	public void updateChart( int nEpoch, List< Double > losses, double validationLoss ) {
@@ -190,82 +183,64 @@ public class N2VDialog {
 		for ( int i = 0; i < losses.size(); i++ ) {
 			averageLoss += losses.get( i );
 		}
-
-		epochData.add( ( double ) nEpoch );
-		averageLossData.add( averageLoss / nEpochSteps );
-		validationLossData.add( validationLoss );
+		averageLoss = averageLoss / nEpochSteps;
 
 		if ( nEpoch == 1 ) {
 			// Size axis to zoom onto first epoch data
 			double ymax = Collections.max( losses );
 			double ymin = Collections.min( losses );
-			chart.getStyler().setXAxisMin( 1.0 );
-			chart.getStyler().setXAxisMax( ( double ) nEpochs );
-			chart.getStyler().setYAxisMin( (Math.floor( ymin ) - 0.2 ));
-			chart.getStyler().setYAxisMax( (Math.ceil( ymax ) + 0.2 ));
-			XYSeries series1 = chart.addSeries( "Average Loss", epochData, averageLossData );
-			series1.setLineColor( XChartSeriesColors.BLUE );
-			series1.setMarkerColor( Color.BLUE );
-			series1.setMarker( SeriesMarkers.CIRCLE );
-			series1.setLineStyle( SeriesLines.SOLID );
-			XYSeries series2 = chart.addSeries( "Validation Loss", epochData, validationLossData );
-			series2.setLineColor( XChartSeriesColors.GREEN );
-			series2.setMarkerColor( Color.GREEN );
-			series2.setMarker( SeriesMarkers.DIAMOND );
-			series2.setLineStyle( SeriesLines.SOLID );
-			chartPanel.revalidate();
-			chartPanel.repaint();
-			frame.add( bottomPanel, BorderLayout.CENTER );
-			frame.pack();
-			frame.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_MAX_HEIGHT ));
-			topPanel.setPreferredSize( new Dimension(DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT ));
+			NumberAxis xAxis = ( NumberAxis ) plot.getDomainAxis();
+			xAxis.setStandardTickUnits( NumberAxis.createIntegerTickUnits() );
+			xAxis.setRange( 1.0, nEpochs );
+			xAxis.setTickUnit( new NumberTickUnit( 1 ) );
+			ValueAxis rangeAxis = plot.getRangeAxis();
+			rangeAxis.setRange( Math.floor( ymin ) - 0.1, Math.ceil( ymax ) + 0.1 );
+			frame.add( chartPanel, BorderLayout.CENTER );
+			topPanel.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_MIN_HEIGHT ) );
 			topPanel.revalidate();
 			topPanel.repaint();
+			frame.pack();
+			frame.setPreferredSize( new Dimension( DEFAULT_WIDTH, DEFAULT_MAX_HEIGHT ) );
 			frame.revalidate();
 			frame.repaint();
-		} 
+		}
 
-		chart.updateXYSeries( "Average Loss", epochData, averageLossData, null );
-		chart.updateXYSeries( "Validation Loss", epochData, validationLossData, null );
+		averageLossData.add( new VectorDataItem( ( double ) nEpoch, averageLoss, 0.0, 0.0 ), true );
+		validationLossData.add( new VectorDataItem( ( double ) nEpoch, validationLoss, 0.0, 0.0 ), true );
 		chartPanel.revalidate();
 		chartPanel.repaint();
 
 	}
 
-	public void updateProgressText(String text) {
-		message.setText(text);
-		message.repaint();
-	}
-	
-	public void updateProgress(int epoch, int step ) {
-		if (progressBar.isIndeterminate())
-		{
-			progressBar.setIndeterminate( false );
-			progressBar.setMinimum( 0 );
-			progressBar.setMaximum( 10 );
+	public void updateProgressText( String text ) {
+
+		try {
+			javax.swing.SwingUtilities.invokeAndWait(
+					new Runnable() {
+
+						@Override
+						public void run() {
+							progressSpinner.setText( text );
+						}
+					} );
+		} catch ( InterruptedException e ) {
+			e.printStackTrace();
+		} catch ( InvocationTargetException e ) {
+			e.printStackTrace();
 		}
+	}
+
+	public void updateProgress( int epoch, int step ) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainPercent = ( ( 100 * step ) / nEpochSteps ) / maxBareSize;
-		progressBar.setValue(remainPercent);
-		message.setText( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps);
-		message.repaint();
-	}
-
-	private class TFInputVerifier extends InputVerifier {
-
-		@Override
-		public boolean verify( JComponent input ) {
-			String text = ( ( JTextField ) input ).getText();
-			try {
-				new Double( text );
-				( ( JTextField ) input ).setForeground( Color.BLACK );
-				rescaleBtn.setEnabled( true );
-				return true;
-			} catch ( NumberFormatException e ) {
-				( ( JTextField ) input ).setForeground( Color.RED );
-				rescaleBtn.setEnabled( false );
-				return false;
-			}
+		if ( currentColor == Color.BLUE ) {
+			progressBar.setForeground( Color.GREEN );
+			currentColor = Color.GREEN;
+		} else {
+			progressBar.setForeground( Color.BLUE );
+			currentColor = Color.BLUE;
 		}
+		progressBar.setValue( remainPercent );
+		progressBar.setString( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps );
 	}
 }
