@@ -15,3 +15,4 @@
 /bin/
 *.index
 /n2v-checkpoint/
+.DS_Store
