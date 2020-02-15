@@ -307,7 +307,7 @@ public class N2VTraining {
 
 		runner.feed(tensorXOpName, tensorX)
 				.feed(tensorYOpName, tensorY)
-				.feed(learningPhaseOpName, Tensors.create(true))
+				.feed(learningPhaseOpName, Tensors.create(false))
 				.feed(sampleWeightsOpName, tensorWeights)
 				.fetch(predictionTargetOpName)
 				.addTarget(validationTargetOpName);
