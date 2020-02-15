@@ -64,7 +64,7 @@ public class N2VDataGenerator {
 
 	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> extractBatches2D(RandomAccessibleInterval<T> img, Interval shape) {
 		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
-		if(img.dimension(0) > shape.dimension(0) && img.dimension(1) > shape.dimension(1)) {
+		if(img.dimension(0) > shape.dimension(0) || img.dimension(1) > shape.dimension(1)) {
 			for (int y = 0; y <= img.dimension(1) - shape.dimension(1); y+=shape.dimension(1)) {
 				for (int x = 0; x <= img.dimension(0) - shape.dimension(0); x+=shape.dimension(0)) {
 					long[] min = {x, y};

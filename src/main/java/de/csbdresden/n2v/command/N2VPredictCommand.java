@@ -2,11 +2,16 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.csbdeep.commands.GenericNetwork;
 import de.csbdresden.n2v.N2VUtils;
+import net.imagej.Dataset;
+import net.imagej.DefaultDataset;
 import net.imagej.ImageJ;
+import net.imagej.ImgPlus;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
+import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
@@ -41,6 +46,9 @@ public class N2VPredictCommand implements Command {
 	@Parameter
 	private OpService opService;
 
+	@Parameter
+	private Context context;
+
 	@Override
 	public void run() {
 
@@ -53,13 +61,14 @@ public class N2VPredictCommand implements Command {
 		try {
 			final CommandModule module = commandService.run(
 					GenericNetwork.class, false,
-					"input", prediction,
+					"input", new DefaultDataset(context, new ImgPlus((Img) prediction)),
 					"normalizeInput", false,
 					"modelFile", zip.getAbsolutePath(),
 					"blockMultiple", 8,
 					"nTiles", 8,
 					"overlap", 32,
 					"showProgressDialog", true).get();
+			if(module.isCanceled()) return;
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 			N2VUtils.denormalizeInplace(output, new FloatType(mean), new FloatType(stdDev), opService);
 		} catch (InterruptedException | ExecutionException e) {

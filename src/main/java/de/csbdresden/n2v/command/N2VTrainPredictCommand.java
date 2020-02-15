@@ -1,6 +1,8 @@
 package de.csbdresden.n2v.command;
 
+import net.imagej.DefaultDataset;
 import net.imagej.ImageJ;
+import net.imagej.ImgPlus;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;

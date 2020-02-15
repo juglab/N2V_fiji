@@ -63,6 +63,7 @@ public class N2VTraining {
 	private static final String lossOpName = "loss/mul";
 	private static final String absOpName = "metrics/n2v_abs/Mean";
 	private static final String mseOpName = "metrics/n2v_mse/Mean";
+	private static final String lrOpName = "Adam/lr/read";
 
 	int[] mapping = { 1, 2, 0, 3 };
 	private boolean checkpointExists;
@@ -191,11 +192,7 @@ public class N2VTraining {
 			int index = 0;
 //			List<RandomAccessibleInterval<FloatType>> inputs = new ArrayList<>();
 //			List<RandomAccessibleInterval<FloatType>> targets = new ArrayList<>();
-			float[] weightsdata = new float[trainBatchSize];
-			for (int i1 = 0; i1 < weightsdata.length; i1++) {
-				weightsdata[i1] = 1;
-			}
-			Tensor<Float> tensorWeights = Tensors.create(weightsdata);
+			Tensor<Float> tensorWeights = makeWeightsTensor();
 
 			if(stopTraining) return;
 
@@ -206,13 +203,11 @@ public class N2VTraining {
 
 			// Create dialog
 			dialog.initChart(numEpochs, stepsPerEpoch);
-			List<Double> losses = null;
 
-			for (int i = 0; i < numEpochs && !stopTraining; i++) {
+			for (int i = 0; i < numEpochs; i++) {
 				System.out.println("Epoch " + (i + 1) + "/" + numEpochs);
 
-				float loss = 0;
-				losses = new ArrayList<>(stepsPerEpoch);
+				List<Double> losses = new ArrayList<>(stepsPerEpoch);
 
 				for (int j = 0; j < stepsPerEpoch && !stopTraining; j++) {
 
@@ -238,33 +233,36 @@ public class N2VTraining {
 					runner.fetch(lossOpName);
 					runner.fetch(absOpName);
 					runner.fetch(mseOpName);
+					runner.fetch(lrOpName);
 
 					List<Tensor<?>> fetchedTensors = runner.run();
-					loss = fetchedTensors.get(0).floatValue();
+					float loss = fetchedTensors.get(0).floatValue();
 					losses.add((double) loss);
 					float abs = fetchedTensors.get(1).floatValue();
 					float mse = fetchedTensors.get(2).floatValue();
+					float learningRate = fetchedTensors.get(3).floatValue();
 
 					fetchedTensors.forEach(tensor -> tensor.close());
 					tensorX.close();
 					tensorY.close();
 
-					progressPercentage(j + 1, stepsPerEpoch, loss, abs, mse);
+					progressPercentage(j + 1, stepsPerEpoch, loss, abs, mse, learningRate);
 					dialog.updateProgress(i + 1, j + 1);
 
 					//TODO GUI - update progress bar indicating the step of the current epoch
 					index++;
 
 				}
-				training_data.on_epoch_end();
 
-				if(stopTraining && noCheckpointSaved) return;
-				sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
-				noCheckpointSaved = false;
-
-				float validationLoss = validate(sess, validation_data, tensorWeights);
-
-				dialog.updateChart(i + 1, losses, validationLoss);
+				if(stopTraining) {
+					saveCheckpoint(sess);
+					return;
+				} else {
+					training_data.on_epoch_end();
+					saveCheckpoint(sess);
+					float validationLoss = validate(sess, validation_data, tensorWeights);
+					dialog.updateChart(i + 1, losses, validationLoss);
+				}
 
 			}
 
@@ -277,6 +275,19 @@ public class N2VTraining {
 //			if (targets.size() > 0) uiService.show("targets", Views.stack(targets));
 
 		}
+	}
+
+	private void saveCheckpoint(Session sess) {
+		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
+		noCheckpointSaved = false;
+	}
+
+	private Tensor<Float> makeWeightsTensor() {
+		float[] weightsdata = new float[trainBatchSize];
+		for (int i1 = 0; i1 < weightsdata.length; i1++) {
+			weightsdata[i1] = 1;
+		}
+		return Tensors.create(weightsdata);
 	}
 
 	public boolean cancelTraining() {
@@ -364,7 +375,7 @@ public class N2VTraining {
 		}
 	}
 
-	public static void progressPercentage( int step, int stepTotal, float loss, float abs, float mse ) {
+	public static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -376,7 +387,7 @@ public class N2VTraining {
 			bareDone.append( icon );
 		}
 		String bareRemain = bare.substring( remainProcent );
-		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs );
+		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate );
 	}
 
 	private Img< FloatType > makeTarget( RandomAccessibleInterval< FloatType > X, long[] targetDims ) {
@@ -442,12 +453,17 @@ public class N2VTraining {
 	}
 
 	private List< RandomAccessibleInterval< FloatType > > createTiles( RandomAccessibleInterval< FloatType > inputRAI ) {
-		System.out.println( "Create tiles.." );
+		long maxBatchDimPossible = Math.min(Math.min(trainBatchDimLength, inputRAI.dimension(0)), inputRAI.dimension(1));
+		if(maxBatchDimPossible < trainBatchDimLength) {
+			System.out.println("[WARNING] Cannot create batches of size " + trainBatchDimLength + "x" + trainBatchDimLength + ", max possible size is " + maxBatchDimPossible + "x" + maxBatchDimPossible);
+		}
+		FinalInterval batchShape = new FinalInterval(maxBatchDimPossible, maxBatchDimPossible);
+		System.out.println( "Create tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
 		List< RandomAccessibleInterval< FloatType > > data = new ArrayList<>();
 		data.add( inputRAI );
 		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.generateBatchesFromList(
 				data,
-				new FinalInterval( trainBatchDimLength, trainBatchDimLength ) );
+				batchShape);
 		long[] tiledim = new long[ tiles.get( 0 ).numDimensions() ];
 		tiles.get( 0 ).dimensions( tiledim );
 		System.out.println( "Generated " + tiles.size() + " tiles of shape " + Arrays.toString( tiledim ) );
@@ -575,5 +591,9 @@ public class N2VTraining {
 
 	public boolean isCanceled() {
 		return stopTraining;
+	}
+
+	public void dispose() {
+		if(dialog != null) dialog.dispose();
 	}
 }
