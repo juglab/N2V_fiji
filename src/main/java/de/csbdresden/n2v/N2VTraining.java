@@ -20,6 +20,7 @@ import org.scijava.Context;
 import org.scijava.display.Display;
 import org.scijava.display.DisplayService;
 import org.scijava.plugin.Parameter;
+import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
 import org.scijava.util.FileUtils;
 import org.tensorflow.Graph;
@@ -143,6 +144,8 @@ public class N2VTraining {
 			int n_train = X.size();
 			int n_val = validationX.size();
 
+			if (!batchNumSufficient(n_train)) return;
+
 			double frac_val = (1.0 * n_val) / (n_train + n_val);
 			double frac_warn = 0.05;
 			if (frac_val < frac_warn) {
@@ -194,7 +197,10 @@ public class N2VTraining {
 //			List<RandomAccessibleInterval<FloatType>> targets = new ArrayList<>();
 			Tensor<Float> tensorWeights = makeWeightsTensor();
 
-			if(stopTraining) return;
+			if(stopTraining) {
+				dialog.dispose();
+				return;
+			}
 
 			//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 
@@ -277,6 +283,18 @@ public class N2VTraining {
 		}
 	}
 
+	private boolean batchNumSufficient(int n_train) {
+		if(trainBatchSize > n_train) {
+			String errorMsg = "Not enough training data (" + n_train + " batches). At least " + trainBatchSize + " batches needed.";
+			System.out.println("[ERROR] " + errorMsg);
+			stopTraining = true;
+			dispose();
+			uiService.showDialog(errorMsg, DialogPrompt.MessageType.ERROR_MESSAGE);
+			return false;
+		}
+		return true;
+	}
+
 	private void saveCheckpoint(Session sess) {
 		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 		noCheckpointSaved = false;
@@ -292,7 +310,6 @@ public class N2VTraining {
 
 	public boolean cancelTraining() {
 		stopTraining = true;
-		if(noCheckpointSaved) dialog.dispose();
 		return true;
 	}
 
@@ -587,10 +604,6 @@ public class N2VTraining {
 
 	public FloatType getStdDev() {
 		return stdDev;
-	}
-
-	public boolean isCanceled() {
-		return stopTraining;
 	}
 
 	public void dispose() {

@@ -70,6 +70,7 @@ public class N2VPredictCommand implements Command {
 					"showProgressDialog", true).get();
 			if(module.isCanceled()) return;
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
+			if(output == null) return;
 			N2VUtils.denormalizeInplace(output, new FloatType(mean), new FloatType(stdDev), opService);
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
