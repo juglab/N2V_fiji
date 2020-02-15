@@ -10,14 +10,13 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
-import net.imglib2.util.ValuePair;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.plugin.Parameter;
+import org.scijava.ui.UIService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +44,7 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	private final ValueManipulatorConsumer<T> manipulator;
 
 	interface ValueManipulatorConsumer<U> {
+
 		double accept(IntervalView<U> patch, Point coord, int dims);
 	}
 
@@ -84,10 +84,6 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 		this.manipulator = manipulator;
 	}
 
-	public int len() {
-		return (int) Math.ceil(X.dimension(2) / (float) batch_size);
-	}
-
 	public void on_epoch_end() {
 		perm = generateRandom((int) X.dimension(2));
 		T zero = X_Patches.randomAccess().get().copy();
@@ -97,36 +93,35 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	}
 
 	public Pair<RandomAccessibleInterval, RandomAccessibleInterval> getItem(int i) {
-        int[] idx = new int[batch_size];
+		int[] idx = new int[batch_size];
 		for (int j = 0; j < idx.length; j++) {
 			idx[j] = perm.get(i * batch_size + j);
 		}
 
 		Pair<RandomAccessibleInterval, RandomAccessibleInterval> patches = subpatch_sampling2D(idx);
 
-//		perm = generateRandom((int) X.dimension(2));
-//		T zero = X_Batches.randomAccess().get().copy();
-//		zero.setZero();
-//		opService.math().multiply((RandomAccessibleInterval<T>) Y_Batches, Y_Batches, zero);
+//		opService.context().getService(UIService.class).show("x patches", opService.copy().rai(patches.getFirst()));
+//		opService.context().getService(UIService.class).show("y patches", opService.copy().rai(patches.getSecond()));
 
-//		opService.context().getService(UIService.class).show("x batches", X_Batches);
-
-		for (int j = 0; j < patches.getFirst().dimension(2); j++) {
+		RandomAccessibleInterval patchX = patches.getFirst();
+		RandomAccessibleInterval patchY = patches.getSecond();
+		for (int j = 0; j < patchX.dimension(2); j++) {
 //            for c in range(self.n_chan):
-			manipulateY(box_size, shape, Views.hyperSlice(patches.getFirst(), 2, j), Views.hyperSlice(patches.getSecond(), 2, j), dims, n_chan, manipulator);
+			IntervalView patchXSlice = Views.hyperSlice(patchX, 2, j);
+			IntervalView patchYSlice = Views.hyperSlice(patchY, 2, j);
+			manipulateX(box_size, shape, patchXSlice, patchYSlice, dims, n_chan, manipulator);
 		}
 		return patches;
 	}
 
-	static <T extends RealType<T> & NativeType<T>> void manipulateY(long box_size, Dimensions shape, RandomAccessibleInterval<T> X_Patch, RandomAccessibleInterval<T> Y_Patch, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
+	static <T extends RealType<T> & NativeType<T>> void manipulateX(long boxSize, Dimensions shape, RandomAccessibleInterval<T> patchX, RandomAccessibleInterval<T> patchY, int dims, long n_chan, ValueManipulatorConsumer<T> manipulator) {
 		int c = 0;
-		List<Point> coords = get_stratified_coords(box_size, shape);
-//                                                    shape=np.array(self.X_Patch.shape)[1:-1])
+		List<Point> coords = get_stratified_coords(boxSize, shape);
 
 		double[] x_val = new double[coords.size()];
 		double[] originalValue = new double[coords.size()];
-		RandomAccess<T> batchXRA = X_Patch.randomAccess();
-		RandomAccess<T> batchYRA = Y_Patch.randomAccess();
+		RandomAccess<T> batchXRA = patchX.randomAccess();
+		RandomAccess<T> batchYRA = patchY.randomAccess();
 		for (int k = 0; k < coords.size(); k++) {
 
 			long xpos = coords.get(k).getLongPosition(0);
@@ -135,7 +130,7 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 			batchXRA.setPosition(new long[]{xpos, ypos, c});
 			originalValue[k] = batchXRA.get().getRealDouble();
 
-			IntervalView<T> XInterval = Views.hyperSlice(X_Patch, 2, c);
+			IntervalView<T> XInterval = Views.hyperSlice(patchX, 2, c);
 			XInterval = Views.addDimension(XInterval, 0, 0);
 			x_val[k] = value_manipulate(manipulator, XInterval, coords.get(k), dims);
 		}
@@ -175,13 +170,16 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	}
 
 	public static <T extends RealType<T> & NativeType<T>> double uniform_withCP(IntervalView<T> patch, Point coord, int dims) {
-		IntervalView<T> sub_patch = get_subpatch(patch, coord, local_sub_patch_radius);
+//		System.out.println("original coord: " + coord);
+		IntervalView<T> sub_patch = Views.zeroMin(get_subpatch(patch, coord, local_sub_patch_radius));
 		Point rand_coord = new Point(coord.numDimensions());
+		Random random = new Random();
 		for (int i = 0; i < dims; i++) {
-			rand_coord.setPosition((int)Math.floor(Math.random() * sub_patch.dimension(i)), i);
+			rand_coord.setPosition((int)Math.floor(random.nextInt((int) (sub_patch.dimension(i)-1))), i);
 		}
 		RandomAccess<T> ra = sub_patch.randomAccess();
 		ra.setPosition(rand_coord);
+//		System.out.println("new coord: " + rand_coord);
 		return ra.get().getRealDouble();
 	}
 
@@ -239,8 +237,8 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 //		System.out.println("res: " + Arrays.toString(Intervals.dimensionsAsIntArray(res)));
 //		System.out.println("source: " + Arrays.toString(Intervals.dimensionsAsIntArray(source)));
 //		System.out.println("interval: " + Arrays.toString(Intervals.dimensionsAsIntArray(interval)));
-		for (long i = interval.min(0); i < interval.max(0); i++) {
-			for (long j = interval.min(1); j < interval.max(1); j++) {
+		for (long i = interval.min(0); i <= interval.max(0); i++) {
+			for (long j = interval.min(1); j <= interval.max(1); j++) {
 				long[] positionPatch = {i-interval.min(0), j-interval.min(1), 0, 0};
 				long[] positionSource = {i, j, interval.min(2), 0};
 //				System.out.println("pos patch: " + Arrays.toString(positionPatch));

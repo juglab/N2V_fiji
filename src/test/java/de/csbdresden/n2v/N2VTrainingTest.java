@@ -20,7 +20,7 @@ public class N2VTrainingTest {
 		Img<FloatType> validationBatches = ij.op().create().img(new FinalDimensions(32, 32, 4), new FloatType());
 		validationBatches.forEach(pix -> pix.set(random.nextFloat()));
 
-		long batchSize = trainingBatches.dimension(32);
+		long batchSize = trainingBatches.dimension(2);
 
 		N2VTraining n2v = new N2VTraining(ij.context());
 		n2v.init();

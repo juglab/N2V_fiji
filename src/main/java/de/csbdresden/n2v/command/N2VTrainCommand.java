@@ -68,6 +68,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 		n2v.setBatchDimLength(batchDimLength);
 		n2v.setPatchDimLength(patchDimLength);
 		if(training.equals(validation)) {
+			System.out.println("Using 10% of training data for validation");
 			n2v.addTrainingAndValidationData(training, 0.1);
 		} else {
 			n2v.addTrainingData(training);
