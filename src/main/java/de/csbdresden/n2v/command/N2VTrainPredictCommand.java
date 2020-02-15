@@ -1,6 +1,7 @@
 package de.csbdresden.n2v.command;
 
 import net.imagej.ImageJ;
+import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
@@ -47,11 +48,22 @@ public class N2VTrainPredictCommand implements Command {
 	@Parameter
 	private CommandService commandService;
 
+	@Parameter
+	private OpService opService;
+
 	private float mean;
 	private float stdDev;
 
 	@Override
 	public void run() {
+
+		if(training.equals(prediction)) {
+			prediction = opService.convert().float32( Views.iterable( prediction ) );
+			training = prediction;
+		} else {
+			prediction = opService.convert().float32( Views.iterable( prediction ) );
+			training = opService.convert().float32( Views.iterable( training ) );
+		}
 
 		if(runTraining()) runPrediction();
 
@@ -101,14 +113,9 @@ public class N2VTrainPredictCommand implements Command {
 		final File trainingImgFile = new File( "/home/random/Development/imagej/project/CSBDeep/train.tif" );
 
 		if ( trainingImgFile.exists() ) {
-			RandomAccessibleInterval _input = ( RandomAccessibleInterval ) ij.io().open( trainingImgFile.getAbsolutePath() );
-			RandomAccessibleInterval _inputConverted = ij.op().convert().float32( Views.iterable( _input ) );
-//			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
+			RandomAccessibleInterval training = ( RandomAccessibleInterval ) ij.io().open( trainingImgFile.getAbsolutePath() );
 
-			RandomAccessibleInterval training = ij.op().copy().rai( _inputConverted );
-			RandomAccessibleInterval prediction = training;
-
-			ij.command().run( N2VTrainPredictCommand.class, true,"training", training, "prediction", prediction).get();
+			ij.command().run( N2VTrainPredictCommand.class, true,"training", training, "prediction", training).get();
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
