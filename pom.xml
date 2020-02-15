@@ -80,12 +80,10 @@
 		<!--<main-class>de.csbdresden.csbdeep.commands.GenericNetwork</main-class> -->
 		<!-- LICENSE -->
 		<license.licenseName>bsd_2</license.licenseName>
-		<license.copyrightOwners>
-			Deborah Schmidt, Florian Jug, Benjamin
-			Wilhelm
-		</license.copyrightOwners>
+		<license.copyrightOwners>Deborah Schmidt</license.copyrightOwners>
 		<tensorflow.version>1.13.1</tensorflow.version>
 		<imagej-tensorflow.version>1.1.4</imagej-tensorflow.version>
+
 	</properties>
 
 	<repositories>
@@ -104,18 +102,6 @@
 			<groupId>de.csbdresden</groupId>
 			<artifactId>csbdeep</artifactId>
 			<version>0.5.0</version>
-		</dependency>
-		
-		<!-- UI dependency -->
-		<dependency>
-			<groupId>com.miglayout</groupId>
-			<artifactId>miglayout-core</artifactId>
-			<version>5.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.miglayout</groupId>
-			<artifactId>miglayout-swing</artifactId>
-			<version>5.0</version>
 		</dependency>
 		
 		<!-- Graphing dependency -->
