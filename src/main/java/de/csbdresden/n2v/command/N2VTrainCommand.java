@@ -35,19 +35,19 @@ public class N2VTrainCommand implements Command, Cancelable {
 	private float stdDev;
 
 	@Parameter
-	int numEpochs = 300;
+	private int numEpochs = 300;
 
 	@Parameter
-	int numStepsPerEpoch = 200;
+	private int numStepsPerEpoch = 200;
 
 	@Parameter
-	int batchSize = 128;
+	private int batchSize = 128;
 
 	@Parameter
-	int batchDimLength = 180;
+	private int batchDimLength = 180;
 
 	@Parameter
-	int patchDimLength = 60;
+	private int patchDimLength = 60;
 
 	@Parameter
 	private CommandService commandService;

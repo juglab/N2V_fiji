@@ -35,10 +35,10 @@ public class N2VPredictCommand implements Command {
 	private File modelFile;
 
 	@Parameter
-	float mean;
+	private float mean;
 
 	@Parameter
-	float stdDev;
+	private float stdDev;
 
 	@Parameter
 	private CommandService commandService;
