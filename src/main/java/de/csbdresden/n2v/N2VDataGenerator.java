@@ -54,8 +54,16 @@ public class N2VDataGenerator {
 				res.addAll(extractBatches2D(img1, shape));
 			} else {
 				for (int j = 0; j < img.dimension(3); j++) {
-					IntervalView<T> img2 = Views.hyperSlice(img1, 3, j);
-					res.addAll(extractBatches2D(img2, shape));
+					IntervalView<T> img2 = Views.hyperSlice(img1, 2, j);
+					if(img.numDimensions() == 4) {
+						res.addAll(extractBatches2D(img2, shape));
+					} else {
+						for (int k = 0; k < img.dimension(4); k++) {
+							IntervalView<T> img3 = Views.hyperSlice(img2, 2, k);
+							res.addAll(extractBatches2D(img3, shape));
+
+						}
+					}
 				}
 			}
 		}
