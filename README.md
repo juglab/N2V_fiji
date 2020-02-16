@@ -1,2 +1,2 @@
-# N2V taining in Fiji
+# N2V training in Fiji
 
