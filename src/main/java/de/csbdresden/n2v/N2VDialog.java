@@ -201,7 +201,7 @@ public class N2VDialog {
 			// Size axis to zoom onto first epoch data
 			NumberAxis xAxis = ( NumberAxis ) plot.getDomainAxis();
 			xAxis.setStandardTickUnits( NumberAxis.createIntegerTickUnits() );
-			xAxis.setRange( 1.0, nEpochs );
+			xAxis.setRange( Math.min(nEpochs-1, 1.0), nEpochs );
 			xAxis.setTickUnit( new NumberTickUnit( 10 ) );
 		}
 

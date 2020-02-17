@@ -81,7 +81,7 @@ public class DataWrapperTest {
 		return res;
 	}
 
-	public static <T extends RealType<T> & NativeType<T>> double random_neighbor_withCP_uniform(IntervalView<T> patch, Point coord, int dims) {
+	public static <T extends RealType<T> & NativeType<T>> double random_neighbor_withCP_uniform(IntervalView<T> patch, Point coord) {
 		Random random = new Random();
 		return random.nextDouble();
 	}
@@ -96,7 +96,7 @@ public class DataWrapperTest {
 //		} else {
 		X = getFirstHalfChannels(Y);
 //		}
-		N2VDataWrapper dw = new N2VDataWrapper<>(ij.context(), X, Y, 4, 0.198, new FinalInterval(32, 32), DataWrapperTest::random_neighbor_withCP_uniform);
+		N2VDataWrapper dw = new N2VDataWrapper<>(ij.context(), X, 4, 0.198, new FinalInterval(32, 32), DataWrapperTest::random_neighbor_withCP_uniform);
 		Pair<RandomAccessibleInterval, RandomAccessibleInterval> res = dw.getItem(0);
 
 		RandomAccessibleInterval<DoubleType> x_batch = res.getFirst();

@@ -35,6 +35,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 	private float stdDev;
 
 	@Parameter
+	private boolean mode3D = false;
+
+	@Parameter
 	private int numEpochs = 300;
 
 	@Parameter
@@ -62,6 +65,8 @@ public class N2VTrainCommand implements Command, Cancelable {
 	public void run() {
 		n2v = new N2VTraining(context);
 		n2v.init();
+		if(mode3D) n2v.setTrainDimensions(3);
+		else n2v.setTrainDimensions(2);
 		n2v.setNumEpochs(numEpochs);
 		n2v.setStepsPerEpoch(numStepsPerEpoch);
 		n2v.setBatchSize(batchSize);

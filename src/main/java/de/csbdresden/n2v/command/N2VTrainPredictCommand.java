@@ -1,8 +1,6 @@
 package de.csbdresden.n2v.command;
 
-import net.imagej.DefaultDataset;
 import net.imagej.ImageJ;
-import net.imagej.ImgPlus;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
@@ -33,6 +31,9 @@ public class N2VTrainPredictCommand implements Command {
 	private String trainedModelPath;
 
 	@Parameter
+	private boolean mode3D = false;
+
+	@Parameter
 	int numEpochs = 300;
 
 	@Parameter
@@ -42,10 +43,10 @@ public class N2VTrainPredictCommand implements Command {
 	int batchSize = 180;
 
 	@Parameter
-	int batchDimlength = 180;
+	int batchDimLength = 180;
 
 	@Parameter
-	int patchDimlength = 60;
+	int patchDimLength = 60;
 
 	@Parameter
 	private CommandService commandService;
@@ -80,8 +81,9 @@ public class N2VTrainPredictCommand implements Command {
 					"numStepsPerEpoch", numStepsPerEpoch,
 					"numEpochs", numEpochs,
 					"batchSize", batchSize,
-					"batchDimLength", batchDimlength,
-					"patchDimLength", patchDimlength).get();
+					"batchDimLength", batchDimLength,
+					"patchDimLength", patchDimLength,
+					"mode3D", mode3D).get();
 			trainedModelPath = (String) module.getOutput("trainedModelPath");
 			if(trainedModelPath == null) return false;
 			mean = (float) module.getOutput("mean");
