@@ -103,9 +103,9 @@ public class N2VDataGenerator {
 			augmented.add(Views.zeroMin(Views.rotate(r2, 0, 1)));
 		});
 		batches.addAll(augmented);
-////		augmented.clear();
-////		batches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
-////		batches.addAll(augmented);
+		augmented.clear();
+		batches.forEach(patch -> augmented.add(Views.invertAxis(patch, 0)));
+		batches.addAll(augmented);
 	}
 
 }
