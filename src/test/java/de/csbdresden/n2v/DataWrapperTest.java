@@ -12,6 +12,8 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.apache.commons.math3.util.Pair;
+import org.junit.AfterClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Random;
@@ -21,30 +23,71 @@ import static org.junit.Assert.assertTrue;
 
 public class DataWrapperTest {
 
+	private static ImageJ ij = new ImageJ();
+
+	@AfterClass
+	public static void dispose() {
+		ij.context().dispose();
+	}
+
+	@Test
+	@Ignore //TODO write this test
+	public void test_sample2D() {
+		sample2D(new FinalInterval(20, 64, 64, 2), new FinalInterval(20, 32, 32, 2), 1);
+		sample2D(new FinalInterval(10, 25, 25, 1), new FinalInterval(10, 12, 12, 1), 2);
+		sample2D(new FinalInterval(10, 25, 25, 3), new FinalInterval(10, 13, 13, 3), 3);
+
+		sample2D(new FinalInterval(20, 64, 64, 64, 2), new FinalInterval(20, 32, 32, 32, 2), 1);
+		sample2D(new FinalInterval(10, 25, 25, 1), new FinalInterval(10, 12, 12, 1), 2);
+		sample2D(new FinalInterval(10, 25, 25, 3), new FinalInterval(10, 13, 13, 3), 3);
+	}
+
+	private void sample2D(FinalInterval in_shape, FinalInterval out_shape, int seed) {
+	}
+//	    def _sample2D(in_shape, out_shape, seed):
+//        X, Y, X_Batches, Y_Batches, indices = create_data(in_shape, out_shape)
+//        np.random.seed(seed)
+//        N2V_DataWrapper.__subpatch_sampling2D__(X, X_Batches, indices,
+//                                                      range=in_shape[1:3]-out_shape[1:3], shape=out_shape[1:3])
+//
+//        assert ([*X_Batches.shape] == out_shape).all()
+//        np.random.seed(seed)
+//        range_y = in_shape[1] - out_shape[1]
+//        range_x = in_shape[2] - out_shape[2]
+//        for j in indices:
+//            assert np.sum(X_Batches[j]) != 0
+//            y_start = np.random.randint(0, range_y + 1)
+//            x_start = np.random.randint(0, range_x + 1)
+//            assert np.sum(X_Batches[j] - X[j, y_start:y_start+out_shape[1], x_start:x_start+out_shape[2]]) == 0
+//
+//        for j in range(in_shape[0]):
+//            if j not in indices:
+
+//                assert np.sum(X_Batches[j]) == 0
+
 	@Test
 	public void test_n2vWrapper_getitem() {
-		ImageJ ij = new ImageJ();
-		_getitem2D(ij, new FinalInterval(32, 32, 4, 2));
-		_getitem2D(ij, new FinalInterval(64, 64, 4, 2));
-		_getitem2D(ij, new FinalInterval(44, 55, 4, 2));
+		_getitem2D(new FinalInterval(32, 32, 4, 2));
+		_getitem2D(new FinalInterval(64, 64, 4, 2));
+		_getitem2D(new FinalInterval(44, 55, 4, 2));
 		//TODO make multiple channels work
 //		_getitem2D(ij, new FinalInterval(45, 41, 4, 4));
 	}
 
-	private Img<DoubleType> createData(ImageJ ij, Interval interval) {
+	private Img<DoubleType> createData(Interval interval) {
 		Img<DoubleType> res = ij.op().create().img(interval);
 		Random random = new Random();
 		res.forEach(pixel -> pixel.set(random.nextDouble()));
 		return res;
 	}
 
-	public static <T extends RealType<T> & NativeType<T>> double random_neighbor_withCP_uniform(IntervalView<T> patch, Point coord, int dims) {
+	public static <T extends RealType<T> & NativeType<T>> double random_neighbor_withCP_uniform(IntervalView<T> patch, Point coord) {
 		Random random = new Random();
 		return random.nextDouble();
 	}
 
-	private void _getitem2D(ImageJ ij, Interval y_shape) {
-		RandomAccessibleInterval<DoubleType> Y = createData(ij, y_shape);
+	private void _getitem2D(Interval y_shape) {
+		RandomAccessibleInterval<DoubleType> Y = createData(y_shape);
 		int n_chan = (int) (y_shape.dimension(y_shape.numDimensions()-1)/2);
 		RandomAccessibleInterval<DoubleType> X;
 //		if(n_chan == 1) {
@@ -53,7 +96,7 @@ public class DataWrapperTest {
 //		} else {
 		X = getFirstHalfChannels(Y);
 //		}
-		N2V_DataWrapper dw = new N2V_DataWrapper<>(ij.context(), X, Y, 4, 0.198, new FinalInterval(32, 32), DataWrapperTest::random_neighbor_withCP_uniform);
+		N2VDataWrapper dw = new N2VDataWrapper<>(ij.context(), X, 4, 0.198, new FinalInterval(32, 32), DataWrapperTest::random_neighbor_withCP_uniform);
 		Pair<RandomAccessibleInterval, RandomAccessibleInterval> res = dw.getItem(0);
 
 		RandomAccessibleInterval<DoubleType> x_batch = res.getFirst();

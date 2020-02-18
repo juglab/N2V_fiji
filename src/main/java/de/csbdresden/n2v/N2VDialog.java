@@ -9,6 +9,7 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -40,6 +41,50 @@ import org.jfree.data.xy.VectorSeriesCollection;
 
 public class N2VDialog {
 
+	public static enum TrainingSteps {
+
+		PREPARATION( "Preparation", 0 ), TRAINING( "Training", 1 ), PREDICTION( "Prediction", 2 );
+
+		private String stepName;
+		private int nstep;
+
+		private TrainingSteps( String stepName, int nstep ) {
+			this.stepName = stepName;
+			this.nstep = nstep;
+		}
+
+		public String getStepName() {
+			return stepName;
+		}
+
+		public int getStep() {
+			return nstep;
+		}
+
+		public static List< String > getStepNames() {
+			List< String > stepNames = new ArrayList< String >();
+			stepNames.add( PREPARATION.getStepName() );
+			stepNames.add( TRAINING.getStepName() );
+			stepNames.add( PREDICTION.getStepName() );
+			return stepNames;
+		}
+	};
+
+	public static enum TrainingStepStatus {
+
+		IDLE( "\u2013" ), RUNNING( "\u2794" ), DONE( "\u2713" ), FAIL( "\u2013" );
+
+		private String statusIcon;
+
+		private TrainingStepStatus( String statusIcon ) {
+			this.statusIcon = statusIcon;
+		}
+
+		public String getStatusIcon() {
+			return statusIcon;
+		}
+	}
+
 	private final static int DEFAULT_WIDTH = 600;
 	private final static int DEFAULT_MIN_HEIGHT = 150;
 	private final static int DEFAULT_MAX_HEIGHT = 650;
@@ -55,18 +100,21 @@ public class N2VDialog {
 	private int nEpochSteps;
 	private VectorSeries averageLossData = null;
 	private VectorSeries validationLossData = null;
-	private JProgressBar progressBar;
 	private int nEpochs;
 	private JFrame frame;
 	private JPanel topPanel;
-	private N2V n2v;
+
+	private N2VTraining n2v;
 	private VectorSeriesCollection data;
 	private XYPlot plot;
 	private JLabel progressSpinner;
-	private Color currentColor = Color.BLUE;
+	private JProgressBar epochProgressBar;
+	private AccordionPanel accordionPanel;
+	private JProgressBar stepProgressBar;
+	private JLabel progressSpinner3;
 
-	public N2VDialog() {
-		createProgressPanel();
+	public N2VDialog(N2VTraining n2v) {
+		createAccordionPanel();
 		createChartPanel();
 
 		frame = new JFrame( FRAME_TITLE );
@@ -94,13 +142,22 @@ public class N2VDialog {
 
 	}
 
-	private void createProgressPanel() {
+	private void createAccordionPanel() {
 		// Progress panel
 		topPanel = new JPanel();
 		topPanel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
 		topPanel.setLayout( new GridBagLayout() );
 
-		JButton cancelBtn = new JButton( "Cancel Training" );
+		// Buttons panel
+		JPanel buttonsPanel = new JPanel();
+		topPanel.setLayout( new GridBagLayout() );
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.insets = new Insets( 5, 5, 5, 5 );
+		gbc.gridx = 0;
+
+		JButton cancelBtn = new JButton( "Cancel" );
 		cancelBtn.addActionListener( new ActionListener() {
 
 			@Override
@@ -109,29 +166,87 @@ public class N2VDialog {
 			}
 
 		} );
+		buttonsPanel.add( cancelBtn, gbc );
+
+		gbc.gridx = 1;
+		JButton finishBtn = new JButton( "Finish Training" );
+		finishBtn.addActionListener( new ActionListener() {
+
+			@Override
+			public void actionPerformed( ActionEvent e ) {
+				//Call a method in N2V
+			}
+
+		} );
+		buttonsPanel.add( finishBtn, gbc );
+
+		// Accordion Panel
+		accordionPanel = new AccordionPanel( TrainingSteps.getStepNames() );
+		// Step 1:
+		JPanel step1Panel = new JPanel();
+		step1Panel.setLayout( new GridBagLayout() );
+		gbc = new GridBagConstraints();
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.insets = new Insets( 5, 5, 5, 5 );
+		gbc.gridx = 0;
 
 		ImageIcon animatedIcon = new ImageIcon( N2VDialog.class.getClassLoader().getResource( "hard-workout.gif" ) );
 		progressSpinner = new JLabel( "", animatedIcon, JLabel.CENTER );
-		LookAndFeel lf = UIManager.getLookAndFeel();
-		UIManager.put( "ProgressBarUI", "javax.swing.plaf.metal.MetalProgressBarUI" );
-		progressBar = new JProgressBar( SwingConstants.HORIZONTAL );
-		progressBar.setPreferredSize( new Dimension( DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT ) );
-		progressBar.setStringPainted( true );
+		step1Panel.add( progressSpinner, gbc );
+		accordionPanel.addChildPanelContent( 0, step1Panel );
 
-		// Place components
-		GridBagConstraints gbc = new GridBagConstraints();
+		// Step 2:
+		JPanel step2Panel = new JPanel();
+		step2Panel.setLayout( new GridBagLayout() );
+		gbc = new GridBagConstraints();
 		gbc.anchor = GridBagConstraints.CENTER;
 		gbc.fill = GridBagConstraints.NONE;
 		gbc.insets = new Insets( 5, 5, 5, 5 );
 		gbc.gridy = 0;
-		topPanel.add( cancelBtn, gbc );
+		// ProgressBars
+		LookAndFeel lf = UIManager.getLookAndFeel();
+		UIManager.put( "ProgressBarUI", "javax.swing.plaf.metal.MetalProgressBarUI" );
+		epochProgressBar = new JProgressBar( SwingConstants.HORIZONTAL );
+		epochProgressBar.setPreferredSize( new Dimension( DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT ) );
+		epochProgressBar.setStringPainted( true );
+		epochProgressBar.setBackground( Color.BLUE );
+		epochProgressBar.setForeground( Color.BLACK );
+		step2Panel.add( epochProgressBar, gbc );
 
 		gbc.gridy = 1;
-		topPanel.add( progressSpinner, gbc );
+		stepProgressBar = new JProgressBar( SwingConstants.HORIZONTAL );
+		stepProgressBar.setPreferredSize( new Dimension( DEFAULT_BAR_WIDTH, DEFAULT_BAR_HEIGHT ) );
+		stepProgressBar.setStringPainted( true );
+		stepProgressBar.setBackground( Color.GREEN );
+		stepProgressBar.setForeground( Color.BLACK );
+		step2Panel.add( stepProgressBar, gbc );
+		accordionPanel.addChildPanelContent( 1, step2Panel );
 
-		gbc.gridy = 2;
-		gbc.fill = GridBagConstraints.BOTH;
-		topPanel.add( progressBar, gbc );
+		// Step 3 
+		JPanel step3Panel = new JPanel();
+		step3Panel.setLayout( new GridBagLayout() );
+		gbc = new GridBagConstraints();
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.insets = new Insets( 5, 5, 5, 5 );
+		gbc.gridx = 0;
+
+		progressSpinner3 = new JLabel( "", animatedIcon, JLabel.CENTER );
+		step3Panel.add( progressSpinner3, gbc );
+
+		accordionPanel.addChildPanelContent( 2, step3Panel );
+
+		// Place components in topPanel
+		gbc = new GridBagConstraints();
+		gbc.anchor = GridBagConstraints.CENTER;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.insets = new Insets( 5, 5, 5, 5 );
+		gbc.gridy = 0;
+		topPanel.add( buttonsPanel, gbc );
+
+		gbc.gridy = 1;
+		topPanel.add( accordionPanel, gbc );
 
 	}
 
@@ -212,7 +327,7 @@ public class N2VDialog {
 
 	}
 
-	public void updateProgressText( String text ) {
+	public void updateProgressText( TrainingSteps stepName, String text ) {
 
 		try {
 			javax.swing.SwingUtilities.invokeAndWait(
@@ -220,7 +335,13 @@ public class N2VDialog {
 
 						@Override
 						public void run() {
-							progressSpinner.setText( text );
+							if ( stepName == TrainingSteps.PREPARATION ) {
+								progressSpinner.setText( text );
+								progressSpinner.repaint();
+							} else {
+								progressSpinner3.setText( text );
+								progressSpinner3.repaint();
+							}
 						}
 					} );
 		} catch ( InterruptedException e ) {
@@ -230,17 +351,32 @@ public class N2VDialog {
 		}
 	}
 
-	public void updateProgress( int epoch, int step ) {
-		int maxBareSize = 10; // 10unit for 100%
-		int remainPercent = ( ( 100 * step ) / nEpochSteps ) / maxBareSize;
-		if ( currentColor == Color.BLUE ) {
-			progressBar.setForeground( Color.GREEN );
-			currentColor = Color.GREEN;
+	public void updateProgress( Integer epoch, Integer step ) {
+		if ( epoch != null ) {
+			if ( ( int ) epoch == 1 ) {
+				epochProgressBar.setMinimum( 1 );
+				epochProgressBar.setMaximum( nEpochs );
+			}
+			epochProgressBar.setValue( epoch );
+			epochProgressBar.setString( "Epoch " + epoch + "/" + nEpochs );
 		} else {
-			progressBar.setForeground( Color.BLUE );
-			currentColor = Color.BLUE;
+			if ( ( int ) step == 1 ) {
+				stepProgressBar.setMinimum( 1 );
+				stepProgressBar.setMaximum( nEpochSteps );
+			}
+			stepProgressBar.setValue( step );
+			stepProgressBar.setString( "Step " + step + "/" + nEpochSteps );
 		}
-		progressBar.setValue( remainPercent );
-		progressBar.setString( "Epoch " + epoch + "/" + nEpochs + ", step " + step + "/" + nEpochSteps );
+	}
+
+	public void updateTrainingStatus( TrainingSteps step, TrainingStepStatus status ) {
+
+		accordionPanel.setChildVisible( step.getStep() );
+		accordionPanel.setChildStatus( step.getStep(), status );
+	}
+
+
+	public void dispose() {
+		frame.dispose();
 	}
 }
