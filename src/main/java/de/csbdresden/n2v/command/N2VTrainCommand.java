@@ -25,16 +25,19 @@ public class N2VTrainCommand implements Command, Cancelable {
 	private RandomAccessibleInterval< FloatType > validation;
 
 	@Parameter(type = ItemIO.OUTPUT)
-	private String trainedModelPath;
+	private String latestTrainedModelPath;
+
+	@Parameter(type = ItemIO.OUTPUT)
+	private String bestTrainedModelPath;
 
 	@Parameter
 	private boolean mode3D = false;
 
 	@Parameter
-	private int numEpochs = 300;
+	private int numEpochs = 100;
 
 	@Parameter
-	private int numStepsPerEpoch = 200;
+	private int numStepsPerEpoch = 400;
 
 	@Parameter
 	private int batchSize = 128;
@@ -77,9 +80,11 @@ public class N2VTrainCommand implements Command, Cancelable {
 			return;
 		}
 		try {
-			File savedModel = n2v.exportTrainedModel();
+			File savedModel = n2v.exportLatestTrainedModel();
 			if(savedModel == null) return;
-			trainedModelPath = savedModel.getAbsolutePath();
+			latestTrainedModelPath = savedModel.getAbsolutePath();
+			savedModel = n2v.exportBestTrainedModel();
+			bestTrainedModelPath = savedModel.getAbsolutePath();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

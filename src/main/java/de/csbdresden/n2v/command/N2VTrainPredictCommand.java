@@ -84,7 +84,7 @@ public class N2VTrainPredictCommand implements Command {
 					"batchDimLength", batchDimLength,
 					"patchDimLength", patchDimLength,
 					"mode3D", mode3D).get();
-			trainedModelPath = (String) module.getOutput("trainedModelPath");
+			trainedModelPath = (String) module.getOutput("bestTrainedModelPath");
 			if(trainedModelPath == null) return false;
 			mean = (float) module.getOutput("mean");
 			stdDev = (float) module.getOutput("stdDev");
@@ -100,8 +100,6 @@ public class N2VTrainPredictCommand implements Command {
 			final CommandModule module = commandService.run(
 					N2VPredictCommand.class, false,
 					"prediction", prediction,
-					"mean", mean,
-					"stdDev", stdDev,
 					"modelFile", new File(trainedModelPath)).get();
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 		} catch (InterruptedException | ExecutionException e) {

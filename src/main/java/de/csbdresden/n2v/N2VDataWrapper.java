@@ -38,6 +38,10 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	private static int local_sub_patch_radius = 5;
 	private final ValueManipulatorConsumer<T> manipulator;
 
+	public long size() {
+		return X.dimension(batchDim);
+	}
+
 	interface ValueManipulatorConsumer<U> {
 		double accept(IntervalView<U> patch, Point coord);
 	}

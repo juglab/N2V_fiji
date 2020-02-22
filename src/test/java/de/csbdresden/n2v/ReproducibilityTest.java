@@ -54,14 +54,14 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		N2VTraining training = new N2VTraining(ij.context());
 		training.init();
 		training.setTrainDimensions(2);
-		training.setNumEpochs(200);
-		training.setStepsPerEpoch(200);
+		training.setNumEpochs(100);
+		training.setStepsPerEpoch(400);
 		training.setBatchSize(32);
 		training.setBatchDimLength(180);
 		training.setPatchDimLength(60);
 		training.addTrainingData(trainImg);
 		training.addValidationData(validateImg);
-		training.addCallbackOnEpochDone(this::calculatePSNR);
+		training.addCallbackOnNewBestModel(this::calculatePSNR);
 
 		training.train();
 
@@ -74,7 +74,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		prediction.setMean(training.getMean());
 		prediction.setStdDev(training.getStdDev());
 		try {
-			prediction.setModelFile(training.exportTrainedModel());
+			prediction.setModelFile(training.exportBestTrainedModel());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
