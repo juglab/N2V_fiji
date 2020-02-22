@@ -39,7 +39,6 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	private final ValueManipulatorConsumer<T> manipulator;
 
 	interface ValueManipulatorConsumer<U> {
-
 		double accept(IntervalView<U> patch, Point coord);
 	}
 

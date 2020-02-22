@@ -3,7 +3,7 @@ package de.csbdresden.n2v;
 import net.imagej.ops.OpService;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
 
 import java.io.File;
@@ -17,7 +17,7 @@ public class N2VUtils {
 
 	private static int n2v_neighborhood_radius = 5;
 
-	public static RandomAccessibleInterval< FloatType > normalize(RandomAccessibleInterval<FloatType> input, FloatType mean, FloatType stdDev, OpService opService) {
+	public static <T extends RealType<T>> RandomAccessibleInterval<T> normalize(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
 //		Img<FloatType> rai = opService.create().img(input);
 //		LoopBuilder.setImages( rai, input ).forEachPixel( ( res, in ) -> {
 //			res.set(in);
@@ -25,11 +25,11 @@ public class N2VUtils {
 //			res.div(stdDev);
 //
 //		} );
-		IterableInterval< FloatType > rai = opService.math().subtract( Views.iterable( input ), mean );
-		return ( RandomAccessibleInterval< FloatType > ) opService.math().divide( rai, stdDev );
+		IterableInterval< T > rai = opService.math().subtract( Views.iterable( input ), mean );
+		return (RandomAccessibleInterval<T>) opService.math().divide( rai, stdDev );
 	}
 
-	public static void denormalizeInplace(RandomAccessibleInterval<FloatType> input, FloatType mean, FloatType stdDev, OpService opService) {
+	public static <T extends RealType<T>> void denormalizeInplace(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
 		opService.math().multiply(input, Views.iterable( input ), stdDev );
 		opService.math().add( input, Views.iterable(input), mean );
 	}

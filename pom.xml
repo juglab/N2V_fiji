@@ -103,6 +103,11 @@
 			<artifactId>csbdeep</artifactId>
 			<version>0.5.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>1.21</version>
+		</dependency>
 		
 		<!-- Graphing dependency -->
 		<dependency>

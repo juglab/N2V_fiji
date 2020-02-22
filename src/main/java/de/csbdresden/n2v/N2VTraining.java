@@ -21,20 +21,25 @@ import org.scijava.plugin.Parameter;
 import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
 import org.scijava.util.FileUtils;
+import org.scijava.util.POM;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
 import org.tensorflow.Output;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class N2VTraining {
 
@@ -89,6 +94,12 @@ public class N2VTraining {
 	private List<RandomAccessibleInterval<FloatType>> historyImages;
 	private boolean noCheckpointSaved = true;
 
+	private List<TrainingCallback> onEpochDoneCallbacks = new ArrayList<>();
+
+	interface TrainingCallback {
+		void accept(N2VTraining training);
+	}
+
 	public N2VTraining(Context context) {
 		context.inject(this);
 	}
@@ -137,6 +148,21 @@ public class N2VTraining {
 
 			RandomAccessibleInterval<FloatType> _X = Views.concatenate(trainDimensions, X);
 			RandomAccessibleInterval<FloatType> _validationX = Views.concatenate(trainDimensions, validationX);
+
+			System.out.println("Normalizing..");
+			if(!headless()) dialog.updateProgressText("Normalizing ...");
+			mean = new FloatType();
+			mean.set( opService.stats().mean( Views.iterable( _X ) ).getRealFloat() );
+			stdDev = new FloatType();
+			stdDev.set( opService.stats().stdDev( Views.iterable( _X ) ).getRealFloat() );
+
+			System.out.println("mean: " + mean.get());
+			System.out.println("stdDev: " + stdDev.get());
+
+			writeModelConfigFile();
+
+			_X = N2VUtils.normalize( _X, mean, stdDev, opService );
+			_validationX = N2VUtils.normalize( _validationX, mean, stdDev, opService );
 
 			if(stopTraining) return;
 
@@ -247,7 +273,7 @@ public class N2VTraining {
 					float mse = fetchedTensors.get(2).floatValue();
 					float learningRate = fetchedTensors.get(3).floatValue();
 
-					fetchedTensors.forEach(tensor -> tensor.close());
+					fetchedTensors.forEach(Tensor::close);
 					tensorX.close();
 					tensorY.close();
 
@@ -267,6 +293,8 @@ public class N2VTraining {
 					saveCheckpoint(sess);
 					float validationLoss = validate(sess, validation_data, tensorWeights);
 					if(!headless()) dialog.updateChart(i + 1, losses, validationLoss);
+					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
+
 				}
 
 			}
@@ -280,6 +308,26 @@ public class N2VTraining {
 //			if (targets.size() > 0) uiService.show("targets", Views.stack(targets));
 
 		}
+	}
+
+	private void writeModelConfigFile() {
+		Map<String, Object> data = new HashMap<>();
+		data.put("name", "N2V");
+		data.put("version", POM.getPOM(N2VTraining.class).getVersion());
+		data.put("mean", mean.get());
+		data.put("stdDev", stdDev.get());
+		Yaml yaml = new Yaml();
+		FileWriter writer = null;
+		try {
+			writer = new FileWriter(new File(modelDir, "config.yaml"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		yaml.dump(data, writer);
+	}
+
+	public void addCallbackOnEpochDone(TrainingCallback callback) {
+		onEpochDoneCallbacks.add(callback);
 	}
 
 	private int[] getMapping() {
@@ -307,9 +355,7 @@ public class N2VTraining {
 
 	private Tensor<Float> makeWeightsTensor() {
 		float[] weightsdata = new float[trainBatchSize];
-		for (int i1 = 0; i1 < weightsdata.length; i1++) {
-			weightsdata[i1] = 1;
-		}
+		Arrays.fill(weightsdata, 1);
 		return Tensors.create(weightsdata);
 	}
 
@@ -350,7 +396,7 @@ public class N2VTraining {
 //			updateHistoryImage(output);
 		}
 
-		fetchedTensors.forEach(tensor -> tensor.close());
+		fetchedTensors.forEach(Tensor::close);
 		tensorX.close();
 		tensorY.close();
 		System.out.println("\nValidation loss: " + loss + " abs: " + abs + " mse: " + mse);
@@ -425,7 +471,7 @@ public class N2VTraining {
 		}
 	}
 
-	public static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
+	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -438,20 +484,6 @@ public class N2VTraining {
 		}
 		String bareRemain = bare.substring( remainProcent );
 		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate );
-	}
-
-	private List< RandomAccessibleInterval< FloatType > > normalizeAndTile( RandomAccessibleInterval< FloatType > img ) {
-		if(mean == null) {
-			// calculate mean and stddev on first image, use these values for additional images
-			mean = new FloatType();
-			mean.set( opService.stats().mean( Views.iterable( img ) ).getRealFloat() );
-			stdDev = new FloatType();
-			stdDev.set( opService.stats().stdDev( Views.iterable( img ) ).getRealFloat() );
-		}
-
-		List< RandomAccessibleInterval< FloatType > > tiles = new ArrayList<>();
-		tiles.addAll( createTiles( N2VUtils.normalize( img, mean, stdDev, opService ) ) );
-		return tiles;
 	}
 
 	private void loadGraph(Graph graph ) {
@@ -530,20 +562,20 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Normalize and tile training and validation data.." );
-		dialog.updateProgressText("Normalizing and tiling training and validation data" );
+		System.out.println( "Tile training and validation data.." );
+		dialog.updateProgressText("Tiling training and validation data" );
 
-		List< RandomAccessibleInterval< FloatType > > tiles = normalizeAndTile( training );
+		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( training );
 
 		int trainEnd = (int) (tiles.size() * (1 - validationAmount));
 		for (int i = 0; i < trainEnd; i++) {
 			//TODO do I need to copy here?
-			X.add( opService.copy().rai( tiles.get( i ) ) );
+			X.add( tiles.get( i ) );
 		}
 		int valEnd = tiles.size()-trainEnd % 2 == 1 ? tiles.size() - 1 : tiles.size();
 		for (int i = trainEnd; i < valEnd; i++) {
 			//TODO do I need to copy here?
-			validationX.add( opService.copy().rai( tiles.get( i ) ) );
+			validationX.add( tiles.get( i ) );
 		}
 	}
 
@@ -551,27 +583,26 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Normalize and tile training data.." );
-		if(!headless()) dialog.updateProgressText("Normalizing and tiling training data" );
+		System.out.println( "Tile training data.." );
+		if(!headless()) dialog.updateProgressText("Tiling training data" );
 
 		System.out.println("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
-		List< RandomAccessibleInterval< FloatType > > tiles = normalizeAndTile( training );
+		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( training );
 
-		//TODO do I need to copy here?
-		tiles.forEach(tile -> X.add( opService.copy().rai( tile ) ));
+		X.addAll(tiles);
 	}
 
 	public void addValidationData(RandomAccessibleInterval<FloatType> validation) {
 
 		if(stopTraining) return;
 
-		System.out.println( "Normalize and tile validation data.." );
-		if(!headless()) dialog.updateProgressText("Normalizing and tiling validation data" );
+		System.out.println( "Tile validation data.." );
+		if(!headless()) dialog.updateProgressText("Tiling validation data" );
 
 		System.out.println("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
-		List< RandomAccessibleInterval< FloatType > > tiles = normalizeAndTile( validation );
+		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( validation );
 
 		//TODO do I need to copy here?
 		tiles.forEach(tile -> validationX.add( opService.copy().rai( tile ) ));
@@ -595,6 +626,31 @@ public class N2VTraining {
 
 	public void setBatchDimLength(final int batchDimLength) {
 		trainBatchDimLength = batchDimLength;
+	}
+
+	public File exportTrainedModel() throws IOException {
+		if(noCheckpointSaved) return null;
+		return N2VUtils.saveTrainedModel(modelDir);
+	}
+
+	public FloatType getMean() {
+		return mean;
+	}
+
+	public FloatType getStdDev() {
+		return stdDev;
+	}
+
+	public void dispose() {
+		if(dialog != null) dialog.dispose();
+	}
+
+	public int getTrainDimensions() {
+		return trainDimensions;
+	}
+
+	public void setTrainDimensions(int trainDimensions) {
+		this.trainDimensions = trainDimensions;
 	}
 
 	public static void main( final String... args ) throws Exception {
@@ -627,30 +683,5 @@ public class N2VTraining {
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
-	}
-
-	public File exportTrainedModel() throws IOException {
-		if(noCheckpointSaved) return null;
-		return N2VUtils.saveTrainedModel(modelDir);
-	}
-
-	public FloatType getMean() {
-		return mean;
-	}
-
-	public FloatType getStdDev() {
-		return stdDev;
-	}
-
-	public void dispose() {
-		if(dialog != null) dialog.dispose();
-	}
-
-	public int getTrainDimensions() {
-		return trainDimensions;
-	}
-
-	public void setTrainDimensions(int trainDimensions) {
-		this.trainDimensions = trainDimensions;
 	}
 }

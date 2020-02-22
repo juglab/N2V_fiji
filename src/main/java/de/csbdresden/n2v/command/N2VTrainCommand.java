@@ -9,7 +9,6 @@ import org.scijava.Cancelable;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
-import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -27,12 +26,6 @@ public class N2VTrainCommand implements Command, Cancelable {
 
 	@Parameter(type = ItemIO.OUTPUT)
 	private String trainedModelPath;
-
-	@Parameter(type = ItemIO.OUTPUT)
-	private float mean;
-
-	@Parameter(type = ItemIO.OUTPUT)
-	private float stdDev;
 
 	@Parameter
 	private boolean mode3D = false;
@@ -53,17 +46,13 @@ public class N2VTrainCommand implements Command, Cancelable {
 	private int patchDimLength = 60;
 
 	@Parameter
-	private CommandService commandService;
-
-	@Parameter
 	private Context context;
 
-	private N2VTraining n2v;
 	private boolean canceled;
 
 	@Override
 	public void run() {
-		n2v = new N2VTraining(context);
+		N2VTraining n2v = new N2VTraining(context);
 		n2v.init();
 		if(mode3D) n2v.setTrainDimensions(3);
 		else n2v.setTrainDimensions(2);
@@ -87,8 +76,6 @@ public class N2VTrainCommand implements Command, Cancelable {
 			e.printStackTrace();
 			return;
 		}
-		stdDev = n2v.getStdDev().getRealFloat();
-		mean = n2v.getMean().getRealFloat();
 		try {
 			File savedModel = n2v.exportTrainedModel();
 			if(savedModel == null) return;
@@ -96,6 +83,21 @@ public class N2VTrainCommand implements Command, Cancelable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public boolean isCanceled() {
+		return canceled;
+	}
+
+	@Override
+	public void cancel(String reason) {
+		canceled = true;
+	}
+
+	@Override
+	public String getCancelReason() {
+		return null;
 	}
 
 	public static void main( final String... args ) throws Exception {
@@ -117,20 +119,5 @@ public class N2VTrainCommand implements Command, Cancelable {
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
-	}
-
-	@Override
-	public boolean isCanceled() {
-		return canceled;
-	}
-
-	@Override
-	public void cancel(String reason) {
-		canceled = true;
-	}
-
-	@Override
-	public String getCancelReason() {
-		return null;
 	}
 }

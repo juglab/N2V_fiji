@@ -1,26 +1,22 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.csbdeep.commands.GenericNetwork;
-import de.csbdresden.n2v.N2VUtils;
-import net.imagej.Dataset;
+import de.csbdresden.n2v.N2VPrediction;
 import net.imagej.DefaultDataset;
 import net.imagej.ImageJ;
 import net.imagej.ImgPlus;
-import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
-import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
-import java.util.concurrent.ExecutionException;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>predict" )
 public class N2VPredictCommand implements Command {
@@ -35,46 +31,19 @@ public class N2VPredictCommand implements Command {
 	private File modelFile;
 
 	@Parameter
-	private float mean;
-
-	@Parameter
-	private float stdDev;
-
-	@Parameter
-	private CommandService commandService;
-
-	@Parameter
-	private OpService opService;
-
-	@Parameter
 	private Context context;
 
 	@Override
 	public void run() {
-
-		prediction = N2VUtils.normalize( prediction, new FloatType(mean), new FloatType(stdDev), opService );
-
-		File zip = modelFile;
-
-		System.out.println("Loading model from " + modelFile);
-
-		try {
-			final CommandModule module = commandService.run(
-					GenericNetwork.class, false,
-					"input", new DefaultDataset(context, new ImgPlus((Img) prediction)),
-					"normalizeInput", false,
-					"modelFile", zip.getAbsolutePath(),
-					"blockMultiple", 8,
-					"nTiles", 8,
-					"overlap", 32,
-					"showProgressDialog", true).get();
-			if(module.isCanceled()) return;
-			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
-			if(output == null) return;
-			N2VUtils.denormalizeInplace(output, new FloatType(mean), new FloatType(stdDev), opService);
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-		}
+		N2VPrediction prediction = new N2VPrediction(context);
+		prediction.setModelFile(modelFile);
+		int padding = 32;
+		RandomAccessibleInterval output = prediction.predict(Views.zeroMin(Views.interval(Views.extendZero(this.prediction), Intervals.expand( this.prediction, padding))));
+//			System.out.println("mean gt   : " + ij.op().stats().mean(pair.getRight()).getRealDouble());
+//			System.out.println("stdDev gt : " + ij.op().stats().stdDev(pair.getRight()));
+//			System.out.println("mean out  : " + ij.op().stats().mean(Views.iterable(output)));
+//			System.out.println("stdDev out: " + ij.op().stats().stdDev(Views.iterable(output)));
+		this.output = Views.zeroMin(Views.interval(output, Intervals.expand(output, -padding)));
 	}
 
 	public static void main( final String... args ) throws Exception {
