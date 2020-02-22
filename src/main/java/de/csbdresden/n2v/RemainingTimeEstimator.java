@@ -1,8 +1,6 @@
 package de.csbdresden.n2v;
 
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 
 public class RemainingTimeEstimator {
 
@@ -12,25 +10,32 @@ public class RemainingTimeEstimator {
 	private int cursor = 0;
 	private boolean firstVal = true;
 	private long remainingTime; // in ms
+	private int currentStep = 0;
 
 	public void setCurrentStep(int step) {
+		currentStep = step;
 		long currentTime = System.currentTimeMillis();
-		long dif = currentTime - time;
-		if(firstVal) {
-			firstVal = false;
-			Arrays.fill(history, dif);
-		} else {
-			history[cursor] = dif;
+		if(step > 0) {
+			long dif = currentTime - time;
+			int h = (int) ((dif / 1000) / 3600);
+			int m = (int) (((dif / 1000) / 60) % 60);
+			int s = (int) ((dif / 1000) % 60);
+			System.out.println(String.format("time of step: %02d:%02d:%02d", h, m, s));
+			if(firstVal) {
+				firstVal = false;
+				Arrays.fill(history, dif);
+			} else {
+				history[cursor] = dif;
+			}
+			cursor = (cursor + 1) % history.length;
 		}
-		cursor = (cursor + 1) % history.length;
-		remainingTime = average(history) * (numSteps - step);
 		time = currentTime;
 	}
 
 	private static long average(long[] history) {
 		long res = 0;
-		for (long l : history) {
-			res += l;
+		for (int i = 0; i < history.length; i++) {
+			res += history[i];
 		}
 		return res / history.length;
 	}
@@ -39,19 +44,13 @@ public class RemainingTimeEstimator {
 		this.numSteps = numSteps;
 	}
 
-	public void setHistoryLength(int length) {
-		history = new long[length];
-		firstVal = true;
-	}
-
 	public String getRemainingTimeString() {
+		if(currentStep == 0) return "";
+		long average = average(history);
+		remainingTime = (long) (average * (numSteps-1 - currentStep));
 		int h = (int) ((remainingTime / 1000) / 3600);
 		int m = (int) (((remainingTime / 1000) / 60) % 60);
 		int s = (int) ((remainingTime / 1000) % 60);
-		return String.format("%02d:%02d:%02d", h, m, s);
-	}
-
-	public void start() {
-		time = System.currentTimeMillis();
+		return String.format("remaining training time: %02d:%02d:%02d", h, m, s);
 	}
 }

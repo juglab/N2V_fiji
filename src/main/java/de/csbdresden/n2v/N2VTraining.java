@@ -107,12 +107,13 @@ public class N2VTraining {
 	private List<TrainingCallback> onNewBestModelCallbacks = new ArrayList<>();
 
 	interface TrainingCallback {
+
 		void accept(N2VTraining training);
 	}
-
 	public N2VTraining(Context context) {
 		context.inject(this);
 	}
+
 	public void init() {
 
 		if(!headless()) {
@@ -128,7 +129,6 @@ public class N2VTraining {
 		addCallbackOnEpochDone(this::copyBestModel);
 
 	}
-
 	private boolean headless() {
 		return uiService.isHeadless();
 	}
@@ -248,12 +248,12 @@ public class N2VTraining {
 			}
 
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
-			remainingTimeEstimator.setHistoryLength(stepsPerEpoch+1);
-			remainingTimeEstimator.setNumSteps(numEpochs * stepsPerEpoch);
-			remainingTimeEstimator.start();
+			remainingTimeEstimator.setNumSteps(numEpochs);
 
 			for (int i = 0; i < numEpochs; i++) {
-				System.out.println("Epoch " + (i + 1) + "/" + numEpochs);
+				remainingTimeEstimator.setCurrentStep(i);
+				String remainingTimeString = remainingTimeEstimator.getRemainingTimeString();
+				System.out.println("Epoch " + (i + 1) + "/" + numEpochs + " " + remainingTimeString);
 
 				List<Double> losses = new ArrayList<>(stepsPerEpoch);
 
@@ -273,8 +273,7 @@ public class N2VTraining {
 					runTrainingOp(sess, tensorWeights, item);
 
 					losses.add((double) currentLoss);
-					remainingTimeEstimator.setCurrentStep(i*stepsPerEpoch + j);
-					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate, remainingTimeEstimator.getRemainingTimeString());
+					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate);
 					if(!headless()) dialog.updateProgress(i + 1, j + 1);
 
 					index++;
@@ -310,9 +309,11 @@ public class N2VTraining {
 
 		Session.Runner runner = sess.runner();
 
+		Tensor<Float> learningRate = Tensors.create(currentLearningRate);
+		Tensor<Boolean> learningPhase = Tensors.create(true);
 		runner.feed(tensorXOpName, tensorX).feed(tensorYOpName, tensorY)
-				.feed(learningPhaseOpName, Tensors.create(true))
-				.feed(lrAssignOpName, Tensors.create(currentLearningRate))
+				.feed(learningPhaseOpName, learningPhase)
+				.feed(lrAssignOpName, learningRate)
 				.feed(sampleWeightsOpName, tensorWeights).addTarget(trainingTargetOpName);
 		runner.fetch(lossOpName);
 		runner.fetch(absOpName);
@@ -328,6 +329,8 @@ public class N2VTraining {
 		fetchedTensors.forEach(Tensor::close);
 		tensorX.close();
 		tensorY.close();
+		learningPhase.close();
+		learningRate.close();
 	}
 
 	private void writeModelConfigFile() {
@@ -510,7 +513,7 @@ public class N2VTraining {
 		}
 	}
 
-	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate, String remainingTime) {
+	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -522,7 +525,7 @@ public class N2VTraining {
 			bareDone.append( icon );
 		}
 		String bareRemain = bare.substring( remainProcent );
-		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f - %s remaining\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate, remainingTime );
+		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate );
 	}
 
 	private void loadGraph(Graph graph ) {
@@ -540,7 +543,7 @@ public class N2VTraining {
 			for ( int i = 0; i < op.numOutputs(); i++ ) {
 				Output< Object > opOutput = op.output( i );
 				String name = opOutput.op().name();
-				System.out.println( name );
+//				System.out.println( name );
 			}
 		} );
 
