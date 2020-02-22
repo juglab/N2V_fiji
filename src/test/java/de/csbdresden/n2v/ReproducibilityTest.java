@@ -59,6 +59,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		training.setBatchSize(32);
 		training.setBatchDimLength(180);
 		training.setPatchDimLength(60);
+		training.setNeighborhoodRadius(2);
 		training.addTrainingData(trainImg);
 		training.addValidationData(validateImg);
 		training.addCallbackOnNewBestModel(this::calculatePSNR);

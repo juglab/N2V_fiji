@@ -87,6 +87,7 @@ public class N2VTraining {
 	private int trainBatchDimLength = 180;
 	private int trainPatchDimLength = 60;
 	private int stepsPerEpoch = 200;
+	private int neighborhoodRadius = 5;
 
 	private int trainDimensions = 2;
 
@@ -218,13 +219,14 @@ public class N2VTraining {
 
 //			int stepsPerEpoch = n_train / trainBatchSize;
 
-			N2VDataWrapper<FloatType> training_data = new N2VDataWrapper<>(context, _X, trainBatchSize, n2v_perc_pix, patch_shape, N2VDataWrapper::uniform_withCP);
+			N2VDataWrapper<FloatType> training_data = new N2VDataWrapper<>(
+					context, _X, trainBatchSize, n2v_perc_pix, patch_shape, neighborhoodRadius, N2VDataWrapper::uniform_withCP);
 
 			if(stopTraining) return;
 
 			N2VDataWrapper<FloatType> validation_data = new N2VDataWrapper<>(context, _validationX,
 					(int) Math.min(trainBatchSize, _validationX.dimension(2)),
-					n2v_perc_pix, val_patch_shape,
+					n2v_perc_pix, val_patch_shape, neighborhoodRadius,
 					N2VDataWrapper::uniform_withCP);
 
 			int index = 0;
@@ -714,6 +716,10 @@ public class N2VTraining {
 
 	public float getCurrentValidationLoss() {
 		return currentValidationLoss;
+	}
+
+	public void setNeighborhoodRadius(int radius) {
+		this.neighborhoodRadius = radius;
 	}
 
 	public static void main( final String... args ) throws Exception {

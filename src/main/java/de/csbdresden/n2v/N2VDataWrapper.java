@@ -51,11 +51,12 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 		return c.accept(patch, coord);
 	}
 
-	public N2VDataWrapper(Context context, RandomAccessibleInterval<T> X, int batchSize, double perc_pix, Dimensions shape, ValueManipulatorConsumer<T> manipulator) {
+	public N2VDataWrapper(Context context, RandomAccessibleInterval<T> X, int batchSize, double perc_pix, Dimensions shape, int neighborhoodRadius, ValueManipulatorConsumer<T> manipulator) {
 
 		context.inject(this);
 
 		this.X = X;
+		this.local_sub_patch_radius = neighborhoodRadius;
 		this.batchSize = batchSize;
 		this.batchDim = shape.numDimensions();
 		this.perm = generateRandom((int) X.dimension(batchDim));
