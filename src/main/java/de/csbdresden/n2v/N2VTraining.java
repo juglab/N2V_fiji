@@ -548,7 +548,7 @@ public class N2VTraining {
 			checkpointDir = Files.createTempDirectory("n2v-latest-").toAbsolutePath().toString() + File.separator + "variables";
 			String predictionGraphDir = trainDimensions == 2 ? "prediction_2d" : "prediction_3d";
 			byte[] predictionGraphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + predictionGraphDir + "/saved_model.pb") );
-			FileUtils.writeFile(new File(new File(checkpointDir).getParentFile(), "saved_model.pb"), predictionGraphDef);
+			FileUtils.writeByteArrayToFile(new File(new File(checkpointDir).getParentFile(), "saved_model.pb"), predictionGraphDef);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -677,7 +677,7 @@ public class N2VTraining {
 		if(bestValidationLoss > currentValidationLoss) {
 			bestValidationLoss = currentValidationLoss;
 			try {
-				Files.copy(mostRecentModelDir.toPath(), bestModelDir.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				FileUtils.copyDirectory(mostRecentModelDir, bestModelDir);
 				onNewBestModelCallbacks.forEach(callback -> callback.accept(this));
 			} catch (IOException e) {
 				e.printStackTrace();
