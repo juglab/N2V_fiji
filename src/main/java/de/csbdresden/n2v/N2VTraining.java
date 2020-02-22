@@ -1,6 +1,7 @@
 package de.csbdresden.n2v;
 
 import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
+import de.csbdresden.n2v.ui.N2VProgress;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.tensorflow.TensorFlowService;
@@ -19,6 +20,7 @@ import org.scijava.Context;
 import org.scijava.display.Display;
 import org.scijava.display.DisplayService;
 import org.scijava.plugin.Parameter;
+import org.scijava.thread.DefaultThreadService;
 import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
 import org.scijava.util.POM;
@@ -78,10 +80,11 @@ public class N2VTraining {
 	private File mostRecentModelDir;
 	private File bestModelDir;
 
-	private N2VDialog dialog;
+	private N2VProgress dialog;
 
 	private final List< RandomAccessibleInterval< FloatType > > X = new ArrayList<>();
 	private final List< RandomAccessibleInterval< FloatType > > validationX = new ArrayList<>();
+
 	private int numEpochs = 300;
 	private int trainBatchSize = 180;
 	private int trainBatchDimLength = 180;
@@ -117,8 +120,13 @@ public class N2VTraining {
 	public void init() {
 
 		if(!headless()) {
-			dialog = new N2VDialog(this);
-			dialog.updateProgressText("Loading TensorFlow" );
+			dialog = N2VProgress.create( this, numEpochs, stepsPerEpoch, null, new DefaultThreadService() );
+			dialog.addTask( "Preparation" );
+			dialog.addTask( "Training" );
+			dialog.addTask( "Prediction" );
+			dialog.display();
+			dialog.setTaskStart( 0 );
+			dialog.setCurrentTaskMessage( "Loading TensorFlow" );
 		}
 
 		System.out.println( "Load TensorFlow.." );
@@ -129,6 +137,7 @@ public class N2VTraining {
 		addCallbackOnEpochDone(this::copyBestModel);
 
 	}
+
 	private boolean headless() {
 		return uiService.isHeadless();
 	}
@@ -138,9 +147,9 @@ public class N2VTraining {
 		if(stopTraining) return;
 
 		System.out.println( "Create session.." );
-		if(!headless()) dialog.updateProgressText("Creating session" );
+		if ( !headless() ) dialog.setCurrentTaskMessage( "Creating session" );
 		try (Graph graph = new Graph();
-		     Session sess = new Session( graph )) {
+				Session sess = new Session( graph )) {
 
 			loadGraph(graph);
 
@@ -155,13 +164,13 @@ public class N2VTraining {
 			if(stopTraining) return;
 
 			System.out.println("Prepare data for training..");
-			if(!headless()) dialog.updateProgressText("Preparing data for training");
+			if(!headless()) dialog.setCurrentTaskMessage("Preparing data for training");
 
 			RandomAccessibleInterval<FloatType> _X = Views.concatenate(trainDimensions, X);
 			RandomAccessibleInterval<FloatType> _validationX = Views.concatenate(trainDimensions, validationX);
 
 			System.out.println("Normalizing..");
-			if(!headless()) dialog.updateProgressText("Normalizing ...");
+			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 			mean = new FloatType();
 			mean.set( opService.stats().mean( Views.iterable( _X ) ).getRealFloat() );
 			stdDev = new FloatType();
@@ -212,6 +221,7 @@ public class N2VTraining {
 							+ "along axes XY (axis " + i + " has incompatible size " + n + ")");
 				}
 			}
+
 			Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
 			long[] patchShapeData = new long[trainDimensions];
 			Arrays.fill(patchShapeData, trainPatchDimLength);
@@ -243,8 +253,9 @@ public class N2VTraining {
 
 			System.out.println("Start training..");
 			if(!headless()) {
-				dialog.updateProgressText("Starting training ...");
-				dialog.initChart(numEpochs, stepsPerEpoch);
+				dialog.setCurrentTaskMessage("Starting training ...");
+				dialog.setTaskDone( 0 );
+				dialog.setTaskStart( 1 );
 			}
 
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
@@ -274,7 +285,7 @@ public class N2VTraining {
 
 					losses.add((double) currentLoss);
 					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate);
-					if(!headless()) dialog.updateProgress(i + 1, j + 1);
+					if(!headless()) dialog.updateTrainingProgress(i + 1, j + 1);
 
 					index++;
 
@@ -287,15 +298,15 @@ public class N2VTraining {
 					training_data.on_epoch_end();
 					saveCheckpoint(sess);
 					currentValidationLoss = validate(sess, validation_data, tensorWeights);
-					if(!headless()) dialog.updateChart(i + 1, losses, currentValidationLoss);
+					if(!headless()) dialog.updateTrainingChart(i + 1, losses, currentValidationLoss);
 					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
 				}
 			}
 
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
-			if(!headless()) dialog.updateProgressText("Training done.");
-			System.out.println("Training done.");
+			if ( !headless() ) dialog.setTaskDone( 1 );
+			System.out.println( "Training done." );
 
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
 //			if (targets.size() > 0) uiService.show("targets", Views.stack(targets));
@@ -336,7 +347,8 @@ public class N2VTraining {
 	private void writeModelConfigFile() {
 		Map<String, Object> data = new HashMap<>();
 		data.put("name", "N2V");
-		data.put("version", POM.getPOM(N2VTraining.class).getVersion());
+		POM pom = POM.getPOM(N2VTraining.class);
+		data.put("version", pom != null ? pom.getVersion() : "");
 		data.put("mean", mean.get());
 		data.put("stdDev", stdDev.get());
 		Yaml yaml = new Yaml();
@@ -564,7 +576,6 @@ public class N2VTraining {
 		checkpointPrefix =
 				Tensors.create(Paths.get(checkpointDir, "variables").toString());
 		mostRecentModelDir = new File(checkpointDir).getParentFile();
-
 	}
 
 	private List< RandomAccessibleInterval< FloatType > > createTiles( RandomAccessibleInterval< FloatType > inputRAI ) {
@@ -606,7 +617,7 @@ public class N2VTraining {
 		if(stopTraining) return;
 
 		System.out.println( "Tile training and validation data.." );
-		dialog.updateProgressText("Tiling training and validation data" );
+		dialog.setCurrentTaskMessage("Tiling training and validation data" );
 
 		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( training );
 
@@ -627,7 +638,7 @@ public class N2VTraining {
 		if(stopTraining) return;
 
 		System.out.println( "Tile training data.." );
-		if(!headless()) dialog.updateProgressText("Tiling training data" );
+		if(!headless()) dialog.setCurrentTaskMessage("Tiling training data" );
 
 		System.out.println("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
@@ -641,7 +652,7 @@ public class N2VTraining {
 		if(stopTraining) return;
 
 		System.out.println( "Tile validation data.." );
-		if(!headless()) dialog.updateProgressText("Tiling validation data" );
+		if(!headless()) dialog.setCurrentTaskMessage("Tiling validation data" );
 
 		System.out.println("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
