@@ -13,6 +13,7 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.display.Display;
@@ -20,7 +21,6 @@ import org.scijava.display.DisplayService;
 import org.scijava.plugin.Parameter;
 import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
-import org.scijava.util.FileUtils;
 import org.scijava.util.POM;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
@@ -35,7 +35,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -246,6 +245,11 @@ public class N2VTraining {
 				dialog.initChart(numEpochs, stepsPerEpoch);
 			}
 
+			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
+			remainingTimeEstimator.setHistoryLength(stepsPerEpoch+1);
+			remainingTimeEstimator.setNumSteps(numEpochs * stepsPerEpoch);
+			remainingTimeEstimator.start();
+
 			for (int i = 0; i < numEpochs; i++) {
 				System.out.println("Epoch " + (i + 1) + "/" + numEpochs);
 
@@ -267,7 +271,8 @@ public class N2VTraining {
 					runTrainingOp(sess, tensorWeights, item);
 
 					losses.add((double) currentLoss);
-					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate);
+					remainingTimeEstimator.setCurrentStep(i*stepsPerEpoch + j);
+					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate, remainingTimeEstimator.getRemainingTimeString());
 					if(!headless()) dialog.updateProgress(i + 1, j + 1);
 
 					index++;
@@ -283,9 +288,7 @@ public class N2VTraining {
 					currentValidationLoss = validate(sess, validation_data, tensorWeights);
 					if(!headless()) dialog.updateChart(i + 1, losses, currentValidationLoss);
 					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
-
 				}
-
 			}
 
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
@@ -505,7 +508,7 @@ public class N2VTraining {
 		}
 	}
 
-	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
+	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate, String remainingTime) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -517,7 +520,7 @@ public class N2VTraining {
 			bareDone.append( icon );
 		}
 		String bareRemain = bare.substring( remainProcent );
-		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate );
+		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f - %s remaining\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate, remainingTime );
 	}
 
 	private void loadGraph(Graph graph ) {
