@@ -17,6 +17,7 @@ import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
+import org.scijava.app.StatusService;
 import org.scijava.display.Display;
 import org.scijava.display.DisplayService;
 import org.scijava.plugin.Parameter;
@@ -58,6 +59,9 @@ public class N2VTraining {
 
 	@Parameter
 	private Context context;
+
+	@Parameter
+	private StatusService statusService;
 
 	private static final String tensorXOpName = "input";
 	private static final String tensorYOpName = "activation_11_target";
@@ -120,7 +124,7 @@ public class N2VTraining {
 	public void init() {
 
 		if(!headless()) {
-			dialog = N2VProgress.create( this, numEpochs, stepsPerEpoch, null, new DefaultThreadService() );
+			dialog = N2VProgress.create( this, numEpochs, stepsPerEpoch, statusService, new DefaultThreadService() );
 			dialog.addTask( "Preparation" );
 			dialog.addTask( "Training" );
 			dialog.addTask( "Prediction" );
@@ -166,23 +170,26 @@ public class N2VTraining {
 			System.out.println("Prepare data for training..");
 			if(!headless()) dialog.setCurrentTaskMessage("Preparing data for training");
 
-			RandomAccessibleInterval<FloatType> _X = Views.concatenate(trainDimensions, X);
-			RandomAccessibleInterval<FloatType> _validationX = Views.concatenate(trainDimensions, validationX);
-
 			System.out.println("Normalizing..");
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
-			mean = new FloatType();
-			mean.set( opService.stats().mean( Views.iterable( _X ) ).getRealFloat() );
-			stdDev = new FloatType();
-			stdDev.set( opService.stats().stdDev( Views.iterable( _X ) ).getRealFloat() );
 
+			mean = new FloatType();
+			mean.set( opService.stats().mean( Views.iterable( Views.stack(X) ) ).getRealFloat() );
+			stdDev = new FloatType();
+			stdDev.set( opService.stats().stdDev( Views.iterable( Views.stack(X) ) ).getRealFloat() );
 			System.out.println("mean: " + mean.get());
 			System.out.println("stdDev: " + stdDev.get());
 
-			writeModelConfigFile();
+			N2VUtils.normalize( X, mean, stdDev, opService );
+			N2VUtils.normalize( validationX, mean, stdDev, opService );
 
-			_X = N2VUtils.normalize( _X, mean, stdDev, opService );
-			_validationX = N2VUtils.normalize( _validationX, mean, stdDev, opService );
+			N2VDataGenerator.augment(X);
+			N2VDataGenerator.augment(validationX);
+
+			RandomAccessibleInterval<FloatType> _X = Views.concatenate(trainDimensions, X);
+			RandomAccessibleInterval<FloatType> _validationX = Views.concatenate(trainDimensions, validationX);
+
+			writeModelConfigFile();
 
 			if(stopTraining) return;
 
@@ -303,6 +310,8 @@ public class N2VTraining {
 				}
 			}
 
+			tensorWeights.close();
+
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
 			if ( !headless() ) dialog.setTaskDone( 1 );
@@ -416,12 +425,13 @@ public class N2VTraining {
 
 			Tensor tensorX = DatasetTensorFlowConverter.datasetToTensor(item.getFirst(), getMapping());
 			Tensor tensorY = DatasetTensorFlowConverter.datasetToTensor(item.getSecond(), getMapping());
+			Tensor<Boolean> tensorLearningPhase = Tensors.create(false);
 
 			Session.Runner runner = sess.runner();
 
 			runner.feed(tensorXOpName, tensorX)
 					.feed(tensorYOpName, tensorY)
-					.feed(learningPhaseOpName, Tensors.create(false))
+					.feed(learningPhaseOpName, tensorLearningPhase)
 					.feed(sampleWeightsOpName, tensorWeights)
 					.addTarget(validationTargetOpName);
 			runner.fetch(lossOpName);
@@ -444,6 +454,7 @@ public class N2VTraining {
 			fetchedTensors.forEach(Tensor::close);
 			tensorX.close();
 			tensorY.close();
+			tensorLearningPhase.close();
 		}
 		avgLoss /= (float)validationBatches;
 		avgAbs /= (float)validationBatches;
@@ -714,6 +725,7 @@ public class N2VTraining {
 
 	public void dispose() {
 		if(dialog != null) dialog.dispose();
+		if(checkpointPrefix != null) checkpointPrefix.close();
 	}
 
 	public int getTrainDimensions() {
@@ -756,11 +768,11 @@ public class N2VTraining {
 			RandomAccessibleInterval training = ij.op().copy().rai( _inputConverted );
 
 			N2VTraining n2v = new N2VTraining(ij.context());
-			n2v.init();
 			n2v.setNumEpochs(5);
 			n2v.setStepsPerEpoch(5);
 			n2v.setBatchSize(128);
 			n2v.setPatchDimLength(64);
+			n2v.init();
 			n2v.addTrainingAndValidationData(training, 0.1);
 			n2v.train();
 		} else

@@ -245,7 +245,7 @@ public class N2VProgress extends JPanel {
 		final JFrame frame = new JFrame( FRAME_TITLE );
 
 		// Create and set up the content pane.
-		final N2VProgress newContentPane = new N2VProgress( frame, n2v, nEpochs, nEpochSteps, null, threadService );
+		final N2VProgress newContentPane = new N2VProgress( frame, n2v, nEpochs, nEpochSteps, status, threadService );
 
 		return newContentPane;
 	}

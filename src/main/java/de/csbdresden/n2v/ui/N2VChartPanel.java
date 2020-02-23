@@ -95,7 +95,7 @@ public class N2VChartPanel extends JPanel {
 
 		NumberAxis xAxis = ( NumberAxis ) plot.getDomainAxis();
 		xAxis.setStandardTickUnits( NumberAxis.createIntegerTickUnits() );
-		xAxis.setRange( 1.0, (double) nEpochs );
+		xAxis.setRange( Math.min(nEpochs-1, 1.0), nEpochs);
 		xAxis.setTickUnit( new NumberTickUnit( 1 ) );
 
 		XYItemRenderer r = plot.getRenderer();

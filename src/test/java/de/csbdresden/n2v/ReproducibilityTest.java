@@ -52,14 +52,14 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		predictionData.clear();
 
 		N2VTraining training = new N2VTraining(ij.context());
-		training.init();
 		training.setTrainDimensions(2);
 		training.setNumEpochs(200);
 		training.setStepsPerEpoch(400);
-		training.setBatchSize(64);
+		training.setBatchSize(96);
 		training.setBatchDimLength(180);
 		training.setPatchDimLength(64);
 		training.setNeighborhoodRadius(2);
+		training.init();
 		training.addTrainingData(trainImg);
 		training.addValidationData(validateImg);
 		training.addCallbackOnEpochDone(this::calculatePSNR);

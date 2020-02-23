@@ -4,6 +4,7 @@ import net.imagej.ops.OpService;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
 import java.io.File;
@@ -11,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.zip.ZipOutputStream;
 
 public class N2VUtils {
@@ -44,4 +46,9 @@ public class N2VUtils {
 		return out.toFile();
 	}
 
+	public static void normalize(List<RandomAccessibleInterval<FloatType>> data, FloatType mean, FloatType stdDev, OpService opService) {
+		for (int i = 0; i < data.size(); i++) {
+			data.set(i, normalize(data.get(i), mean, stdDev, opService));
+		}
+	}
 }

@@ -26,23 +26,22 @@ public class N2VDataGenerator {
 
 	static <T extends RealType<T>> List<RandomAccessibleInterval<T>> generateBatches(RandomAccessibleInterval<T> img, Interval shape) {
 
-		List<RandomAccessibleInterval<T>> patches = extractBatches(img, shape);
+		return extractBatches(img, shape);
 
-		if(shape.dimension(0) == shape.dimension(1)) {
+	}
+
+	static <T extends RealType<T>> void augment(List<RandomAccessibleInterval<T>> tiles) {
+		if(tiles.get(0).dimension(0) == tiles.get(0).dimension(1)) {
 			//share in XY
-			augmentBatches(patches);
+			augmentBatches(tiles);
 		}
-
 //		Collections.shuffle(patches);
-
-		List<RandomAccessibleInterval<T>> res = new ArrayList<>();
-		patches.forEach(patch -> {
+		for (int i = 0; i < tiles.size(); i++) {
+			RandomAccessibleInterval<T> patch = tiles.get(i);
 			RandomAccessibleInterval<T> rai = Views.addDimension(patch, 0, 0);
 			rai = Views.addDimension(rai, 0, 0);
-			res.add(Views.zeroMin(rai));
-		});
-
-		return res;
+			tiles.set(i, Views.zeroMin(rai));
+		}
 	}
 
 	private static <T extends RealType<T>> List<RandomAccessibleInterval<T>> extractBatches(RandomAccessibleInterval<T> img, Interval shape) {

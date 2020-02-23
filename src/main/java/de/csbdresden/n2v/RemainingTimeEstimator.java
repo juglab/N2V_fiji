@@ -47,7 +47,7 @@ public class RemainingTimeEstimator {
 	public String getRemainingTimeString() {
 		if(currentStep == 0) return "";
 		long average = average(history);
-		remainingTime = (long) (average * (numSteps-1 - currentStep));
+		remainingTime = average * (numSteps - currentStep);
 		int h = (int) ((remainingTime / 1000) / 3600);
 		int m = (int) (((remainingTime / 1000) / 60) % 60);
 		int s = (int) ((remainingTime / 1000) % 60);

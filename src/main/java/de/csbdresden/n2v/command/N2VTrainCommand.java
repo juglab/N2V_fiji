@@ -56,7 +56,6 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Override
 	public void run() {
 		N2VTraining n2v = new N2VTraining(context);
-		n2v.init();
 		if(mode3D) n2v.setTrainDimensions(3);
 		else n2v.setTrainDimensions(2);
 		n2v.setNumEpochs(numEpochs);
@@ -64,6 +63,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 		n2v.setBatchSize(batchSize);
 		n2v.setBatchDimLength(batchDimLength);
 		n2v.setPatchDimLength(patchDimLength);
+		n2v.init();
 		try {
 			if(training.equals(validation)) {
 				System.out.println("Using 10% of training data for validation");

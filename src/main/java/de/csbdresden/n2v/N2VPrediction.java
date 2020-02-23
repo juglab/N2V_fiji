@@ -79,7 +79,7 @@ public class N2VPrediction {
 		try {
 			final CommandModule module = commandService.run(
 					GenericNetwork.class, false,
-					"input", new DefaultDataset(context, new ImgPlus((Img) prediction)),
+					"input", prediction,
 					"normalizeInput", false,
 					"modelFile", zippedModel.getAbsolutePath(),
 					"blockMultiple", 8,

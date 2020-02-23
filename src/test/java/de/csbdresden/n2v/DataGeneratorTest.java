@@ -19,22 +19,22 @@ public class DataGeneratorTest {
 	public void testExtractPatches2D() {
 		Img<IntType> img = new ArrayImgFactory<>(new IntType()).create(10, 10, 20);
 		List<RandomAccessibleInterval<IntType>> patches = N2VDataGenerator.generateBatches(img, new FinalInterval(5, 5));
-		assertEquals(4*20*8, patches.size());
+		assertEquals(4*20, patches.size());
 		patches = N2VDataGenerator.generateBatches(img, new FinalInterval(10, 10));
-		assertEquals(20*8, patches.size());
+		assertEquals(20, patches.size());
 		patches = N2VDataGenerator.generateBatches(img, new FinalInterval(8, 8));
-		assertEquals(20*8, patches.size());
+		assertEquals(20, patches.size());
 	}
 
 	@Test
 	public void testExtractPatches3D() {
 		Img<IntType> img = new ArrayImgFactory<>(new IntType()).create(10, 10, 10, 20);
 		List<RandomAccessibleInterval<IntType>> patches = N2VDataGenerator.generateBatches(img, new FinalInterval(5, 5, 5));
-		assertEquals(8*20*8, patches.size());
+		assertEquals(8*20, patches.size());
 		patches = N2VDataGenerator.generateBatches(img, new FinalInterval(10, 10, 10));
-		assertEquals(20*8, patches.size());
+		assertEquals(20, patches.size());
 		patches = N2VDataGenerator.generateBatches(img, new FinalInterval(8, 8, 8));
-		assertEquals(20*8, patches.size());
+		assertEquals(20, patches.size());
 	}
 
 	@Test
