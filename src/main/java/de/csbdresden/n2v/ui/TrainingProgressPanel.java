@@ -37,8 +37,6 @@ public class TrainingProgressPanel extends JPanel {
 		epochProgressLabel = new JLabel("Epoch", JLabel.LEFT);
 		add( epochProgressLabel, gbc );
 		
-		//For a thicker progress bar
-		//UIManager.put( "ProgressBarUI", "javax.swing.plaf.metal.MetalProgressBarUI" );
 		gbc.gridwidth = GridBagConstraints.RELATIVE;
 		gbc.weightx = 1;
 		gbc.insets = new Insets( 5, 5, 2, 10 );

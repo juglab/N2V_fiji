@@ -73,6 +73,7 @@ public class N2VChartPanel extends JPanel {
 
 		JFreeChart chart = ChartFactory.createTimeSeriesChart( CHART_TITLE, XAXIS_LABEL, YAXIS_LABEL, data );
 		chart.setBackgroundPaint( Color.WHITE );
+		chart.removeLegend();
 
 		chartPanel = new ChartPanel( chart, false );
 		chartPanel.setBorder( BorderFactory.createEmptyBorder( 2, 2, 2, 2 ) );
@@ -107,7 +108,7 @@ public class N2VChartPanel extends JPanel {
 		
 		XYPlot plot = (XYPlot) chart.getPlot();
 		LegendTitle lt = new LegendTitle(plot);
-		lt.setItemFont(new Font("Dialog", Font.PLAIN, 9));
+		lt.setItemFont(new Font("Dialog", Font.PLAIN, 12));
 		lt.setBackgroundPaint(new Color(200, 200, 255, 100));
 		lt.setFrame(new BlockBorder(Color.white));
 		lt.setPosition(RectangleEdge.BOTTOM);

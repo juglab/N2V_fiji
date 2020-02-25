@@ -68,6 +68,7 @@ public class N2VProgress extends JPanel {
 
 	private N2VTraining n2v;
 	private N2VChartPanel chart;
+	private JLabel warningLabel;
 
 	public N2VProgress( JFrame frame, N2VTraining n2v, int nEpochs, int nEpochSteps, StatusService status, ThreadService threadService ) {
 
@@ -79,16 +80,18 @@ public class N2VProgress extends JPanel {
 		this.frame = frame;
 		this.threadService = threadService;
 
-		StyleConstants.setForeground( red, Color.red );
-
+		final JPanel warnrow = new JPanel( new FlowLayout( FlowLayout.LEFT ) );
+		warnrow.setBackground(Color.WHITE);
+		warningLabel = new JLabel("",JLabel.CENTER);
+		warningLabel.setPreferredSize( new Dimension(500, 10));
+		warningLabel.setForeground( Color.RED );
+		warnrow.add( warningLabel );
+		
 		taskContainer = new JPanel();
-		taskContainer.setLayout( new BoxLayout( taskContainer, BoxLayout.Y_AXIS ) );
 		taskContainer.setBorder( BorderFactory.createCompoundBorder(new EmptyBorder(10, 10, 10, 10), BorderFactory.createLineBorder(Color.BLUE)));
+		taskContainer.setLayout( new BoxLayout( taskContainer, BoxLayout.Y_AXIS ) );
 		taskContainer.setBackground( Color.WHITE );
-
-		final JPanel topPanel = new JPanel( new BorderLayout() );
-		topPanel.setBackground( Color.WHITE );
-		topPanel.add( taskContainer, BorderLayout.WEST );
+		taskContainer.add(warnrow);
 
 		add( taskContainer, BorderLayout.PAGE_START );
 
@@ -105,8 +108,8 @@ public class N2VProgress extends JPanel {
 
 		// Buttons panel
 		JPanel buttonsPanel = new JPanel();
+		buttonsPanel.setLayout(new GridBagLayout());
 		buttonsPanel.setBackground( Color.WHITE );
-		topPanel.setLayout( new GridBagLayout() );
 		GridBagConstraints gbc = new GridBagConstraints();
 		gbc.anchor = GridBagConstraints.CENTER;
 		gbc.fill = GridBagConstraints.NONE;
@@ -268,5 +271,9 @@ public class N2VProgress extends JPanel {
 
 	public void updateTrainingProgress( int i, int j ) {
 		chart.updateProgress( i, j );
+	}
+
+	public void setWarning( String string ) {
+		warningLabel.setText( string );
 	}
 }
