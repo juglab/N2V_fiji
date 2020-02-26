@@ -2,6 +2,7 @@ package de.csbdresden.n2v;
 
 import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
 import de.csbdresden.n2v.ui.N2VProgress;
+import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.tensorflow.TensorFlowService;
@@ -10,6 +11,9 @@ import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converters;
+import net.imglib2.converter.RealFloatConverter;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
@@ -708,6 +712,26 @@ public class N2VTraining {
 		}
 	}
 
+	public void addTrainingAndValidationData(File trainingFolder, double validationAmount) {
+
+		if(trainingFolder.isDirectory()) {
+			File[] imgs = trainingFolder.listFiles();
+			for (File file : imgs) {
+				if(stopTraining) return;
+				try {
+					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
+					addTrainingAndValidationData(convertToFloat(img), validationAmount);
+				} catch (IOException e) {
+					logService.warn("Could not load " + file.getAbsolutePath() + " as image");
+				}
+			}
+		}
+	}
+
+	public static <T extends RealType<T>> RandomAccessibleInterval<FloatType> convertToFloat(RandomAccessibleInterval<T> img) {
+		return Converters.convert(img, new RealFloatConverter<T>(), new FloatType());
+	}
+
 	public void addTrainingData(RandomAccessibleInterval<FloatType> training) {
 
 		if(stopTraining) return;
@@ -720,6 +744,22 @@ public class N2VTraining {
 		X.addAll(createTiles( training ));
 	}
 
+	public void addTrainingData(File trainingFolder) {
+
+		if(trainingFolder.isDirectory()) {
+			File[] imgs = trainingFolder.listFiles();
+			for (File file : imgs) {
+				if(stopTraining) return;
+				try {
+					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
+					addTrainingData(convertToFloat(img));
+				} catch (IOException e) {
+					logService.warn("Could not load " + file.getAbsolutePath() + " as image");
+				}
+			}
+		}
+	}
+
 	public void addValidationData(RandomAccessibleInterval<FloatType> validation) {
 
 		if(stopTraining) return;
@@ -730,6 +770,22 @@ public class N2VTraining {
 		logService.info("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
 		validationX.addAll(createTiles( validation ));
+	}
+
+	public void addValidationData(File trainingFolder) {
+
+		if(trainingFolder.isDirectory()) {
+			File[] imgs = trainingFolder.listFiles();
+			for (File file : imgs) {
+				if(stopTraining) return;
+				try {
+					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
+					addValidationData(convertToFloat(img));
+				} catch (IOException e) {
+					logService.warn("Could not load " + file.getAbsolutePath() + " as image");
+				}
+			}
+		}
 	}
 
 	public void setStepsPerEpoch(final int steps) {
