@@ -2,6 +2,7 @@ package de.csbdresden.n2v;
 
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
@@ -30,7 +31,7 @@ public class N2VDataGenerator {
 
 	}
 
-	static <T extends RealType<T>> void augment(List<RandomAccessibleInterval<T>> tiles) {
+	static <T extends RealType<T> & NativeType<T>> void augment(List<RandomAccessibleInterval<T>> tiles) {
 		if(tiles.get(0).dimension(0) == tiles.get(0).dimension(1)) {
 			//share in XY
 			augmentBatches(tiles);
@@ -40,6 +41,7 @@ public class N2VDataGenerator {
 			RandomAccessibleInterval<T> patch = tiles.get(i);
 			RandomAccessibleInterval<T> rai = Views.addDimension(patch, 0, 0);
 			rai = Views.addDimension(rai, 0, 0);
+//			tiles.set(i, N2VUtils.copy(Views.zeroMin(rai)));
 			tiles.set(i, Views.zeroMin(rai));
 		}
 	}

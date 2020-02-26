@@ -16,11 +16,14 @@ import org.junit.AfterClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+// TODO this is crap
 public class DataWrapperTest {
 
 	private static ImageJ ij = new ImageJ();
@@ -89,15 +92,15 @@ public class DataWrapperTest {
 	private void _getitem2D(Interval y_shape) {
 		RandomAccessibleInterval<DoubleType> Y = createData(y_shape);
 		int n_chan = (int) (y_shape.dimension(y_shape.numDimensions()-1)/2);
-		RandomAccessibleInterval<DoubleType> X;
+		List<RandomAccessibleInterval<DoubleType>> X;
 //		if(n_chan == 1) {
 //			X = Views.hyperSlice(Y, Y.numDimensions()-1, 0);
 //			X = (RandomAccessibleInterval) Views.addDimension(X);
 //		} else {
 		X = getFirstHalfChannels(Y);
 //		}
-		N2VDataWrapper dw = new N2VDataWrapper<>(ij.context(), X, 4, 0.198, new FinalInterval(32, 32), 5, DataWrapperTest::random_neighbor_withCP_uniform);
-		Pair<RandomAccessibleInterval, RandomAccessibleInterval> res = dw.getItem(0);
+		N2VDataWrapper<DoubleType> dw = new N2VDataWrapper<>(X, 4, 0.198, new FinalInterval(32, 32), 5, DataWrapperTest::random_neighbor_withCP_uniform);
+		Pair<RandomAccessibleInterval<DoubleType>, RandomAccessibleInterval<DoubleType>> res = dw.getItem(0);
 
 		RandomAccessibleInterval<DoubleType> x_batch = res.getFirst();
 		RandomAccessibleInterval<DoubleType> y_batch = res.getSecond();
@@ -123,13 +126,20 @@ public class DataWrapperTest {
 		assertTrue(sum_y <= 4*4*n_chan);
 	}
 
-	private RandomAccessibleInterval<DoubleType> getFirstHalfChannels(RandomAccessibleInterval<DoubleType> y) {
-		RandomAccessibleInterval<DoubleType> X;
+	private List<RandomAccessibleInterval<DoubleType>> getFirstHalfChannels(RandomAccessibleInterval<DoubleType> y) {
+		List<RandomAccessibleInterval<DoubleType>> X = new ArrayList<>();
+		RandomAccessibleInterval<DoubleType> _X;
 		long[] start = new long[y.numDimensions()];
 		long[] end = new long[y.numDimensions()];
 		y.max(end);
 		end[y.numDimensions()-1] = end[y.numDimensions()-1]/2;
-		X = Views.interval(y, new FinalInterval(start, end));
+		_X = Views.interval(y, new FinalInterval(start, end));
+		for (int i = 0; i < y.dimension(y.numDimensions()-2); i++) {
+			IntervalView<DoubleType> slice = Views.hyperSlice(_X, y.numDimensions() - 2, i);
+			slice = Views.addDimension(slice, 0, 0);
+			Views.permute(slice, slice.numDimensions()-1, slice.numDimensions()-2);
+			X.add(slice);
+		}
 		return X;
 	}
 

@@ -1,6 +1,7 @@
 package de.csbdresden.n2v;
 
 import de.csbdresden.csbdeep.commands.GenericNetwork;
+import net.imagej.Dataset;
 import net.imagej.DefaultDataset;
 import net.imagej.ImgPlus;
 import net.imagej.ops.OpService;
@@ -75,11 +76,12 @@ public class N2VPrediction {
 	}
 
 	public RandomAccessibleInterval predict(RandomAccessibleInterval input) {
-		RandomAccessibleInterval prediction = N2VUtils.normalize(input, mean, stdDev, opService);
+		Img prediction = (Img) N2VUtils.normalize(input, mean, stdDev, opService);
+		Dataset inputDataset = new DefaultDataset(context, new ImgPlus(prediction));
 		try {
 			final CommandModule module = commandService.run(
 					GenericNetwork.class, false,
-					"input", prediction,
+					"input", inputDataset,
 					"normalizeInput", false,
 					"modelFile", zippedModel.getAbsolutePath(),
 					"blockMultiple", 8,

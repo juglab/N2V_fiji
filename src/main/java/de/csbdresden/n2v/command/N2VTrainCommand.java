@@ -56,7 +56,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Override
 	public void run() {
 		N2VTraining n2v = new N2VTraining(context);
-		if(mode3D) n2v.setTrainDimensions(3);
+		if(mode3D){
+			n2v.setTrainDimensions(3);
+		}
 		else n2v.setTrainDimensions(2);
 		n2v.setNumEpochs(numEpochs);
 		n2v.setStepsPerEpoch(numStepsPerEpoch);

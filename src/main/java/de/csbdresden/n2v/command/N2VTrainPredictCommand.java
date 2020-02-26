@@ -6,6 +6,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.ItemIO;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
 import org.scijava.command.CommandService;
@@ -18,11 +19,49 @@ import java.util.concurrent.ExecutionException;
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train + predict" )
 public class N2VTrainPredictCommand implements Command {
 
-	@Parameter
+	@Parameter(label = "Image used for training")
 	private RandomAccessibleInterval< FloatType > training;
 
-	@Parameter
+	@Parameter(label = "Image to denoise after training")
 	private RandomAccessibleInterval< FloatType > prediction;
+
+	//TODO make these parameters work
+//	@Parameter(label = "Training mode", choices = {"start new training", "continue training"})
+//	private String trainBase;
+//
+//	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+//	private String newTrainingLabel = "<html><br/><span style='font-weight: normal'>Options for new training</span></html>";
+
+	@Parameter(label = "Use 3D model instead of 2D")
+	private boolean mode3D = false;
+
+	//TODO make these parameters work
+//	@Parameter(label = "Start from model trained on noise")
+//	private boolean startFromNoise = false;
+//
+//	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+//	private String continueTrainingLabel = "<html><br/><span style='font-weight: normal'>Options for continuing training</span></html>";
+//
+//	@Parameter(required = false, label = "Pretrained model file (.zip)")
+//	private File pretrainedNetwork;
+
+	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+	private String advancedLabel = "<html><br/><span style='font-weight: normal'>Advanced options</span></html>";
+
+	@Parameter(label = "Number of epochs")
+	private int numEpochs = 300;
+
+	@Parameter(label = "Number of steps per epoch")
+	private int numStepsPerEpoch = 200;
+
+	@Parameter(label = "Batch size per step")
+	private int batchSize = 180;
+
+	@Parameter(label = "Dimension length of batch")
+	private int batchDimLength = 180;
+
+	@Parameter(label = "Dimension length of patch")
+	private int patchDimLength = 60;
 
 	@Parameter( type = ItemIO.OUTPUT )
 	private RandomAccessibleInterval< FloatType > output;
@@ -31,31 +70,10 @@ public class N2VTrainPredictCommand implements Command {
 	private String trainedModelPath;
 
 	@Parameter
-	private boolean mode3D = false;
-
-	@Parameter
-	int numEpochs = 300;
-
-	@Parameter
-	int numStepsPerEpoch = 200;
-
-	@Parameter
-	int batchSize = 180;
-
-	@Parameter
-	int batchDimLength = 180;
-
-	@Parameter
-	int patchDimLength = 60;
-
-	@Parameter
 	private CommandService commandService;
 
 	@Parameter
 	private OpService opService;
-
-	private float mean;
-	private float stdDev;
 
 	@Override
 	public void run() {
@@ -86,8 +104,6 @@ public class N2VTrainPredictCommand implements Command {
 					"mode3D", mode3D).get();
 			trainedModelPath = (String) module.getOutput("bestTrainedModelPath");
 			if(trainedModelPath == null) return false;
-			mean = (float) module.getOutput("mean");
-			stdDev = (float) module.getOutput("stdDev");
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			return false;
