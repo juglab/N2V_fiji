@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.util.Collections;
 import java.util.List;
 
@@ -11,6 +12,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLayer;
 import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -51,28 +53,34 @@ public class N2VChartPanel extends JPanel {
 	private de.csbdresden.n2v.ui.TrainingProgressPanel progressPanel;
 
 	public N2VChartPanel( int nEpochs, int nEpochSteps ) {
+
+		setLayout( new BorderLayout() );
+		setBackground( Color.WHITE );
+		setBorder(new EmptyBorder(10,10,10,10));
 		
-		setLayout(new BorderLayout());
+
 		
 		this.nEpochSteps = nEpochSteps;
 
 		waitLayer = new WaitLayerUI();
 
 		// Progress bars
-		progressPanel = new TrainingProgressPanel(nEpochs, nEpochSteps);
+		progressPanel = new TrainingProgressPanel( nEpochs, nEpochSteps );
 		add( progressPanel, BorderLayout.NORTH );
-		
+
 		//Chart
 		data = new VectorSeriesCollection();
-		
+
 		JFreeChart chart = ChartFactory.createTimeSeriesChart( CHART_TITLE, XAXIS_LABEL, YAXIS_LABEL, data );
 		chart.setBackgroundPaint( Color.WHITE );
-		
+		chart.removeLegend();
+
 		chartPanel = new ChartPanel( chart, false );
 		chartPanel.setBorder( BorderFactory.createEmptyBorder( 2, 2, 2, 2 ) );
 		chartPanel.setPreferredSize( new Dimension( DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT ) );
 		chartPanel.setFillZoomRectangle( true );
 		chartPanel.setMouseWheelEnabled( true );
+		chartPanel.setBackground( Color.WHITE );
 		add( chartPanel, BorderLayout.CENTER );
 
 		plot = ( XYPlot ) chart.getPlot();
@@ -84,14 +92,6 @@ public class N2VChartPanel extends JPanel {
 		plot.setRangeCrosshairVisible( true );
 		plot.setDomainAxis( new NumberAxis() );
 		plot.setRangeAxis( new NumberAxis() );
-		/*
-		LegendTitle lt = new LegendTitle(plot);
-		lt.setBackgroundPaint(new Color(200, 200, 255, 100));
-		lt.setFrame(new BlockBorder(Color.white));
-		lt.setPosition(RectangleEdge.TOP);
-		XYTitleAnnotation ta = new XYTitleAnnotation(nepochs0.98, 0.02, lt,RectangleAnchor.TOP_RIGHT);
-		plot.addAnnotation(ta);
-		*/
 
 		NumberAxis xAxis = ( NumberAxis ) plot.getDomainAxis();
 		xAxis.setStandardTickUnits( NumberAxis.createIntegerTickUnits() );
@@ -105,6 +105,18 @@ public class N2VChartPanel extends JPanel {
 			renderer.setDefaultShapesFilled( true );
 			renderer.setDrawSeriesLineAsPath( true );
 		}
+		
+		XYPlot plot = (XYPlot) chart.getPlot();
+		LegendTitle lt = new LegendTitle(plot);
+		lt.setItemFont(new Font("Dialog", Font.PLAIN, 12));
+		lt.setBackgroundPaint(new Color(200, 200, 255, 100));
+		lt.setFrame(new BlockBorder(Color.white));
+		lt.setPosition(RectangleEdge.BOTTOM);
+		XYTitleAnnotation ta = new XYTitleAnnotation(0.98, 0.98, lt,RectangleAnchor.TOP_RIGHT);
+
+		ta.setMaxWidth(0.48);
+		plot.addAnnotation(ta);
+		
 
 		// Data 
 		averageLossData = new VectorSeries( "Training Loss" );
@@ -115,18 +127,16 @@ public class N2VChartPanel extends JPanel {
 		waitLayer.start();
 	}
 
-
 	public JComponent getPanel() {
 		return new JLayer< Container >( this, waitLayer );
 	}
-	
-	public void updateProgress(int epoch, int step) {
-		if (epoch == 1)
-		{
+
+	public void updateProgress( int epoch, int step ) {
+		if ( epoch == 1 ) {
 			waitLayer.stop();
 			repaint();
 		}
-		progressPanel.updateProgress(epoch, step);
+		progressPanel.updateProgress( epoch, step );
 	}
 
 	public void updateChart( int nEpoch, List< Double > losses, double validationLoss ) {
@@ -151,6 +161,5 @@ public class N2VChartPanel extends JPanel {
 		chartPanel.repaint();
 
 	}
-	
-	
+
 }

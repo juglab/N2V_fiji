@@ -150,6 +150,10 @@ public class N2VTraining {
 			dialog.display();
 			dialog.setTaskStart( 0 );
 			dialog.setCurrentTaskMessage( "Loading TensorFlow" );
+
+			//TODO warning if no GPU support
+			//dialog.setWarning("WARNING: this will take for ever!");
+
 		}
 
 		logService.info( "Load TensorFlow.." );
@@ -299,7 +303,7 @@ public class N2VTraining {
 
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
-			if ( !headless() ) dialog.setTaskDone( 1 );
+			if ( !headless() ) dialog.setTaskDone( 2 );
 			logService.info( "Training done." );
 
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
