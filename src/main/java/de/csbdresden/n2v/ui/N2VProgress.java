@@ -215,8 +215,9 @@ public class N2VProgress extends JPanel {
 		setTaskMessage( currentTask, text );
 	}
 
-	private void setTaskMessage( final int task, final String text ) {
-		tasks.get( task ).progress.setText( text );;
+	private void setTaskMessage( final int task, String text ) {
+		if(!text.isEmpty()) text = "- " + text;
+		tasks.get( task ).progress.setText( text );
 	}
 
 	private void setTaskStatus( final int task, final int status ) {
