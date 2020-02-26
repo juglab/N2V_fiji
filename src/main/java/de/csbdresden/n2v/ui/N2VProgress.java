@@ -88,7 +88,6 @@ public class N2VProgress extends JPanel {
 		warnrow.add( warningLabel );
 		
 		taskContainer = new JPanel();
-		taskContainer.setBorder( BorderFactory.createCompoundBorder(new EmptyBorder(10, 10, 10, 10), BorderFactory.createLineBorder(Color.BLUE)));
 		taskContainer.setLayout( new BoxLayout( taskContainer, BoxLayout.Y_AXIS ) );
 		taskContainer.setBackground( Color.WHITE );
 		taskContainer.add(warnrow);
@@ -97,7 +96,6 @@ public class N2VProgress extends JPanel {
 
 		final JPanel centerPanel = new JPanel();
 		centerPanel.setBackground( Color.WHITE );
-		centerPanel.setBorder( BorderFactory.createCompoundBorder(new EmptyBorder(10, 10, 10, 10), BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE), "Training Results", TitledBorder.LEFT, TitledBorder.TOP, null, Color.BLACK)));
 		centerPanel.setLayout( new BoxLayout( centerPanel, BoxLayout.Y_AXIS ) );
 		centerPanel.add( Box.createRigidArea( new Dimension( 10, 0 ) ) );
 		chart = new N2VChartPanel( nEpochs, nEpochSteps );
