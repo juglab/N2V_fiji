@@ -20,6 +20,7 @@ import org.scijava.Context;
 import org.scijava.app.StatusService;
 import org.scijava.display.Display;
 import org.scijava.display.DisplayService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.thread.DefaultThreadService;
 import org.scijava.ui.DialogPrompt;
@@ -56,6 +57,12 @@ public class N2VTraining {
 
 	@Parameter
 	private UIService uiService;
+
+	@Parameter
+	private LogService logService;
+
+	@Parameter
+	private DatasetIOService datasetIOService;
 
 	@Parameter
 	private StatusService statusService;
@@ -141,9 +148,9 @@ public class N2VTraining {
 			dialog.setCurrentTaskMessage( "Loading TensorFlow" );
 		}
 
-		System.out.println( "Load TensorFlow.." );
+		logService.info( "Load TensorFlow.." );
 		tensorFlowService.loadLibrary();
-		System.out.println( tensorFlowService.getStatus().getInfo() );
+		logService.info( tensorFlowService.getStatus().getInfo() );
 
 		addCallbackOnEpochDone(new ReduceLearningRateOnPlateau()::reduceLearningRateOnPlateau);
 		addCallbackOnEpochDone(this::copyBestModel);
@@ -158,7 +165,7 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Create session.." );
+		logService.info( "Create session.." );
 		if ( !headless() ) dialog.setCurrentTaskMessage( "Creating session" );
 
 		try (Graph graph = new Graph();
@@ -184,19 +191,25 @@ public class N2VTraining {
 
 			if(stopTraining) return;
 
-			System.out.println("Prepare data for training..");
+			logService.info("Prepare data for training..");
 			if(!headless()) dialog.setCurrentTaskMessage("Preparing data for training");
 
-			System.out.println("Normalizing..");
+			logService.info("Normalizing..");
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
 			writeModelConfigFile();
 
+			logService.info("Augment tiles..");
+			if(!headless()) dialog.setCurrentTaskMessage("Augment tiles ...");
+
 			N2VDataGenerator.augment(X);
 			N2VDataGenerator.augment(validationX);
 
 			if(stopTraining) return;
+
+			logService.info("Prepare training batches...");
+			if(!headless()) dialog.setCurrentTaskMessage("Prepare training batches...");
 
 //			uiService.show("_X", opService.copy().rai(_X));
 //			uiService.show("_validationX",opService.copy().rai(_validationX));
@@ -208,6 +221,9 @@ public class N2VTraining {
 			N2VDataWrapper<FloatType> training_data = makeTrainingData(n2v_perc_pix);
 
 			if(stopTraining) return;
+
+			logService.info("Prepare validation batches..");
+			if(!headless()) dialog.setCurrentTaskMessage("Prepare validation batches...");
 
 			List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validation_data = makeValidationData(n2v_perc_pix);
 
@@ -223,7 +239,7 @@ public class N2VTraining {
 
 			//TODO GUI - display time estimate until training is done - each step should take roughly the same time
 
-			System.out.println("Start training..");
+			logService.info("Start training..");
 			if(!headless()) {
 				dialog.setCurrentTaskMessage("Starting training ...");
 				dialog.setTaskDone( 0 );
@@ -236,7 +252,7 @@ public class N2VTraining {
 			for (int i = 0; i < numEpochs; i++) {
 				remainingTimeEstimator.setCurrentStep(i);
 				String remainingTimeString = remainingTimeEstimator.getRemainingTimeString();
-				System.out.println("Epoch " + (i + 1) + "/" + numEpochs + " " + remainingTimeString);
+				logService.info("Epoch " + (i + 1) + "/" + numEpochs + " " + remainingTimeString);
 
 				List<Double> losses = new ArrayList<>(stepsPerEpoch);
 
@@ -244,7 +260,7 @@ public class N2VTraining {
 
 					if (index * trainBatchSize + trainBatchSize > X.size() - 1) {
 						index = 0;
-						System.out.println("starting with index 0 of training batches");
+						logService.info("starting with index 0 of training batches");
 					}
 
 					Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>> item = training_data.getItem(index);
@@ -280,7 +296,7 @@ public class N2VTraining {
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
 			if ( !headless() ) dialog.setTaskDone( 1 );
-			System.out.println( "Training done." );
+			logService.info( "Training done." );
 
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
 //			if (targets.size() > 0) uiService.show("targets", Views.stack(targets));
@@ -304,7 +320,7 @@ public class N2VTraining {
 		double frac_val = (1.0 * n_val) / (n_train + n_val);
 		double frac_warn = 0.05;
 		if (frac_val < frac_warn) {
-			System.out.println("small number of validation images (only " + (100 * frac_val) + "% of all images)");
+			logService.info("small number of validation images (only " + (100 * frac_val) + "% of all images)");
 		}
 		//        axes = axes_check_and_normalize('S'+self.config.axes,_X.ndim)
 		//        ax = axes_dict(axes)
@@ -343,8 +359,8 @@ public class N2VTraining {
 		mean.set( opService.stats().mean( Views.iterable( Views.stack(X) ) ).getRealFloat() );
 		stdDev = new FloatType();
 		stdDev.set( opService.stats().stdDev( Views.iterable( Views.stack(X) ) ).getRealFloat() );
-		System.out.println("mean: " + mean.get());
-		System.out.println("stdDev: " + stdDev.get());
+		logService.info("mean: " + mean.get());
+		logService.info("stdDev: " + stdDev.get());
 
 		N2VUtils.normalize( X, mean, stdDev, opService );
 		N2VUtils.normalize( validationX, mean, stdDev, opService );
@@ -414,7 +430,7 @@ public class N2VTraining {
 	private boolean batchNumSufficient(int n_train) {
 		if(trainBatchSize > n_train) {
 			String errorMsg = "Not enough training data (" + n_train + " batches). At least " + trainBatchSize + " batches needed.";
-			System.out.println("[ERROR] " + errorMsg);
+			logService.error(errorMsg);
 			stopTraining = true;
 			dispose();
 			uiService.showDialog(errorMsg, DialogPrompt.MessageType.ERROR_MESSAGE);
@@ -487,7 +503,7 @@ public class N2VTraining {
 		avgAbs /= (float)validationBatches;
 		avgMse /= (float)validationBatches;
 
-		System.out.println("\nValidation loss: " + avgLoss + " abs: " + avgAbs + " mse: " + avgMse);
+		logService.info("\nValidation loss: " + avgLoss + " abs: " + avgAbs + " mse: " + avgMse);
 		return avgLoss;
 	}
 
@@ -554,7 +570,6 @@ public class N2VTraining {
 		historyImages.add(0, outXY);
 		Display<?> display = uiService.context().service(DisplayService.class).getDisplay("training history");
 		RandomAccessibleInterval<FloatType> stack = Views.stack(historyImages);
-		System.out.println(Arrays.toString(Intervals.dimensionsAsIntArray(stack)));
 		if(display == null) uiService.show("training history", stack);
 		else {
 			display.clear();
@@ -579,7 +594,7 @@ public class N2VTraining {
 	}
 
 	private void loadUntrainedGraph(Graph graph ) throws IOException {
-		System.out.println( "Import graph.." );
+		logService.info( "Import graph.." );
 		String graphName = trainDimensions == 2 ? "graph_2d.pb" : "graph_3d.pb";
 		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
 		graph.importGraphDef( graphDef );
@@ -587,7 +602,7 @@ public class N2VTraining {
 //			for ( int i = 0; i < op.numOutputs(); i++ ) {
 //				Output< Object > opOutput = op.output( i );
 //				String name = opOutput.op().name();
-//				System.out.println( name );
+//				logService.info( name );
 //			}
 //		} );
 		bestModelDir = Files.createTempDirectory("n2v-best-").toFile();
@@ -605,7 +620,7 @@ public class N2VTraining {
 
 	private void loadTrainedGraph(Graph graph, File zipFile ) throws IOException {
 
-		System.out.println( "Import trained graph.." );
+		logService.info( "Import trained graph.." );
 
 		File trainedModel = Files.createTempDirectory("n2v-imported-model").toFile();
 		N2VUtils.unZipAll(zipFile, trainedModel);
@@ -622,7 +637,7 @@ public class N2VTraining {
 //			for ( int i = 0; i < op.numOutputs(); i++ ) {
 //				Output< Object > opOutput = op.output( i );
 //				String name = opOutput.op().name();
-//				System.out.println( name );
+//				logService.info( name );
 //			}
 //		} );
 
@@ -644,12 +659,12 @@ public class N2VTraining {
 
 		maxBatchDimPossible = Math.min(trainBatchDimLength, maxBatchDimPossible);
 		if(maxBatchDimPossible < trainBatchDimLength) {
-			System.out.println("[WARNING] Cannot create batches of edge length " + trainBatchDimLength + ", max possible length is " + maxBatchDimPossible);
+			logService.warn("Cannot create batches of edge length " + trainBatchDimLength + ", max possible length is " + maxBatchDimPossible);
 		}
 		long[] batchShapeData = new long[trainDimensions];
 		Arrays.fill(batchShapeData, maxBatchDimPossible);
 		FinalInterval batchShape = new FinalInterval(batchShapeData);
-//		System.out.println( "Creating tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
+//		logService.info( "Creating tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
 		List< RandomAccessibleInterval< FloatType > > data = new ArrayList<>();
 		data.add( inputRAI );
 		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.generateBatchesFromList(
@@ -657,7 +672,7 @@ public class N2VTraining {
 				batchShape);
 		long[] tiledim = new long[ tiles.get( 0 ).numDimensions() ];
 		tiles.get( 0 ).dimensions( tiledim );
-		System.out.println( "Generated " + tiles.size() + " tiles of shape " + Arrays.toString( tiledim ) );
+		logService.info( "Generated " + tiles.size() + " tiles of shape " + Arrays.toString( tiledim ) );
 
 //		RandomAccessibleInterval<FloatType> tilesStack = Views.stack(tiles);
 //		uiService.show("tiles", tilesStack);
@@ -676,7 +691,7 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Tile training and validation data.." );
+		logService.info( "Tile training and validation data.." );
 		dialog.setCurrentTaskMessage("Tiling training and validation data" );
 
 		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( training );
@@ -697,10 +712,10 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Tile training data.." );
+		logService.info( "Tile training data.." );
 		if(!headless()) dialog.setCurrentTaskMessage("Tiling training data" );
 
-		System.out.println("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
+		logService.info("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
 		X.addAll(createTiles( training ));
 	}
@@ -709,10 +724,10 @@ public class N2VTraining {
 
 		if(stopTraining) return;
 
-		System.out.println( "Tile validation data.." );
+		logService.info( "Tile validation data.." );
 		if(!headless()) dialog.setCurrentTaskMessage("Tiling validation data" );
 
-		System.out.println("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
+		logService.info("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
 		validationX.addAll(createTiles( validation ));
 	}
