@@ -8,10 +8,7 @@ import java.awt.Font;
 import java.util.Collections;
 import java.util.List;
 
-import javax.swing.BorderFactory;
-import javax.swing.JComponent;
-import javax.swing.JLayer;
-import javax.swing.JPanel;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartFactory;
@@ -52,6 +49,8 @@ public class N2VChartPanel extends JPanel {
 	private VectorSeries validationLossData;
 	private de.csbdresden.n2v.ui.TrainingProgressPanel progressPanel;
 
+	private final static ImageIcon waitingIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
+
 	public N2VChartPanel( int nEpochs, int nEpochSteps ) {
 
 		setLayout( new BorderLayout() );
@@ -62,7 +61,7 @@ public class N2VChartPanel extends JPanel {
 		
 		this.nEpochSteps = nEpochSteps;
 
-		waitLayer = new WaitLayerUI();
+		waitLayer = new WaitLayerUI(this);
 
 		// Progress bars
 		progressPanel = new TrainingProgressPanel( nEpochs, nEpochSteps );

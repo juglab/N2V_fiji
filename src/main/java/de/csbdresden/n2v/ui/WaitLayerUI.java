@@ -1,26 +1,19 @@
 package de.csbdresden.n2v.ui;
 
-import java.awt.AlphaComposite;
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Composite;
-import java.awt.Container;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.ImageObserver;
 import java.beans.PropertyChangeEvent;
 
-import javax.swing.JComponent;
-import javax.swing.JLayer;
-import javax.swing.Timer;
+import javax.swing.*;
 import javax.swing.plaf.LayerUI;
 
 
-public class WaitLayerUI extends LayerUI<Container> implements ActionListener {
+public class WaitLayerUI extends LayerUI<Container> implements ActionListener, ImageObserver {
 
 	private static final long serialVersionUID = 1L;
+	private final JPanel parent;
 	private boolean mIsRunning;
 	private boolean mIsFadingOut;
 	private Timer mTimer;
@@ -28,6 +21,14 @@ public class WaitLayerUI extends LayerUI<Container> implements ActionListener {
 	private int mAngle;
 	private int mFadeCount;
 	private int mFadeLimit = 15;
+
+	private final static ImageIcon waitingIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
+	private final static int iconScale = 2;
+	private Image waitingImage = waitingIcon.getImage().getScaledInstance(iconScale*waitingIcon.getIconWidth(), iconScale*waitingIcon.getIconHeight(), Image.SCALE_FAST);
+
+	public WaitLayerUI(JPanel parent){
+		this.parent = parent;
+	}
 
 	@Override
 	public void paint(Graphics g, JComponent c) {
@@ -46,24 +47,11 @@ public class WaitLayerUI extends LayerUI<Container> implements ActionListener {
 		float fade = (float) mFadeCount / (float) mFadeLimit;
 		// Gray it out.
 		Composite urComposite = g2.getComposite();
-		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, .5f * fade));
-		g2.fillRect(0, 0, w, h);
-		g2.setComposite(urComposite);
-
-		// Paint the wait indicator.
-		int s = Math.min(w, h) / 5;
-		int cx = w / 2;
-		int cy = h / 2;
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		g2.setStroke(new BasicStroke(s / 4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, .7f * fade));
 		g2.setPaint(Color.white);
-		g2.rotate(Math.PI * mAngle / 180, cx, cy);
-		for (int i = 0; i < 12; i++) {
-			float scale = (11.0f - (float) i) / 11.0f;
-			g2.drawLine(cx + s, cy, cx + s * 2, cy);
-			g2.rotate(-Math.PI / 6, cx, cy);
-			g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, scale * fade));
-		}
+		g2.fillRect(0, 0, w, h);
+		g2.drawImage(waitingImage, w/2-waitingIcon.getIconWidth()*iconScale/2, h - waitingIcon.getIconHeight()*iconScale - 35, this);
+		g2.setComposite(urComposite);
 
 		g2.dispose();
 	}
@@ -109,5 +97,11 @@ public class WaitLayerUI extends LayerUI<Container> implements ActionListener {
 		if ("tick".equals(pce.getPropertyName())) {
 			l.repaint();
 		}
+	}
+
+	@Override
+	public boolean imageUpdate(Image image, int i, int i1, int i2, int i3, int i4) {
+		parent.repaint();
+		return true;
 	}
 }
