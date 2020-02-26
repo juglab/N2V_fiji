@@ -8,6 +8,7 @@ import net.imglib2.view.Views;
 import org.scijava.Cancelable;
 import org.scijava.Context;
 import org.scijava.ItemIO;
+import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -18,35 +19,41 @@ import java.io.IOException;
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train" )
 public class N2VTrainCommand implements Command, Cancelable {
 
-	@Parameter
+	@Parameter(label = "Image used for training")
 	private RandomAccessibleInterval< FloatType > training;
 
-	@Parameter
+	@Parameter(label = "Image used for validation")
 	private RandomAccessibleInterval< FloatType > validation;
 
-	@Parameter(type = ItemIO.OUTPUT)
-	private String latestTrainedModelPath;
-
-	@Parameter(type = ItemIO.OUTPUT)
-	private String bestTrainedModelPath;
-
-	@Parameter
+	@Parameter(label = "Use 3D model instead of 2D")
 	private boolean mode3D = false;
 
-	@Parameter
-	private int numEpochs = 100;
+	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+	private String advancedLabel = "<html><br/><span style='font-weight: normal'>Advanced options</span></html>";
 
-	@Parameter
-	private int numStepsPerEpoch = 400;
+	@Parameter(label = "Number of epochs")
+	private int numEpochs = 300;
 
-	@Parameter
-	private int batchSize = 128;
+	@Parameter(label = "Number of steps per epoch")
+	private int numStepsPerEpoch = 200;
 
-	@Parameter
+	@Parameter(label = "Batch size per step")
+	private int batchSize = 180;
+
+	@Parameter(label = "Dimension length of batch")
 	private int batchDimLength = 180;
 
-	@Parameter
+	@Parameter(label = "Dimension length of patch")
 	private int patchDimLength = 60;
+
+	@Parameter(label = "Neighborhood radius")
+	private int neighborhoodRadius = 5;
+
+	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
+	private String latestTrainedModelPath;
+
+	@Parameter(type = ItemIO.OUTPUT, label = "model with lowest validation loss")
+	private String bestTrainedModelPath;
 
 	@Parameter
 	private Context context;
@@ -56,15 +63,13 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Override
 	public void run() {
 		N2VTraining n2v = new N2VTraining(context);
-		if(mode3D){
-			n2v.setTrainDimensions(3);
-		}
-		else n2v.setTrainDimensions(2);
+		n2v.setTrainDimensions(mode3D ? 3 : 2);
 		n2v.setNumEpochs(numEpochs);
 		n2v.setStepsPerEpoch(numStepsPerEpoch);
 		n2v.setBatchSize(batchSize);
 		n2v.setBatchDimLength(batchDimLength);
 		n2v.setPatchDimLength(patchDimLength);
+		n2v.setNeighborhoodRadius(neighborhoodRadius);
 		n2v.init();
 		try {
 			if(training.equals(validation)) {

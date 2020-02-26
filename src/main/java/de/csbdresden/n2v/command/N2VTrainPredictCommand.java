@@ -63,11 +63,17 @@ public class N2VTrainPredictCommand implements Command {
 	@Parameter(label = "Dimension length of patch")
 	private int patchDimLength = 60;
 
+	@Parameter(label = "Neighborhood radius")
+	private int neighborhoodRadius = 5;
+
 	@Parameter( type = ItemIO.OUTPUT )
 	private RandomAccessibleInterval< FloatType > output;
 
-	@Parameter(type = ItemIO.OUTPUT)
-	private String trainedModelPath;
+	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
+	private String latestTrainedModelPath;
+
+	@Parameter(type = ItemIO.OUTPUT, label = "model with lowest validation loss")
+	private String bestTrainedModelPath;
 
 	@Parameter
 	private CommandService commandService;
@@ -101,9 +107,11 @@ public class N2VTrainPredictCommand implements Command {
 					"batchSize", batchSize,
 					"batchDimLength", batchDimLength,
 					"patchDimLength", patchDimLength,
+					"neighborhoodRadius", neighborhoodRadius,
 					"mode3D", mode3D).get();
-			trainedModelPath = (String) module.getOutput("bestTrainedModelPath");
-			if(trainedModelPath == null) return false;
+			bestTrainedModelPath = (String) module.getOutput("bestTrainedModelPath");
+			latestTrainedModelPath = (String) module.getOutput("latestTrainedModelPath");
+			if(latestTrainedModelPath == null) return false;
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 			return false;
@@ -116,7 +124,7 @@ public class N2VTrainPredictCommand implements Command {
 			final CommandModule module = commandService.run(
 					N2VPredictCommand.class, false,
 					"prediction", prediction,
-					"modelFile", new File(trainedModelPath)).get();
+					"modelFile", new File(bestTrainedModelPath)).get();
 			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
