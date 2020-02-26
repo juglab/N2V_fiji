@@ -102,7 +102,6 @@ public class WaitLayerUI extends LayerUI<Container> implements ActionListener {
 
 	public void stop() {
 		mIsFadingOut = true;
-		mIsRunning = false;
 	}
 
 	@Override
