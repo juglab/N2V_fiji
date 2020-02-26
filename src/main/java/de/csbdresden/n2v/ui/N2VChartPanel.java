@@ -65,6 +65,7 @@ public class N2VChartPanel extends JPanel {
 
 		// Progress bars
 		progressPanel = new TrainingProgressPanel( nEpochs, nEpochSteps );
+		progressPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 4));
 		add( progressPanel, BorderLayout.NORTH );
 
 		//Chart
