@@ -26,18 +26,18 @@ public class ReduceLearningRateOnPlateau {
 			cooldown_counter -= 1;
 			wait = 0;
 		}
-		if(monitorOp.accept(training.getCurrentValidationLoss(), best)) {
-			best = training.getCurrentValidationLoss();
+		if(monitorOp.accept(training.output().getCurrentValidationLoss(), best)) {
+			best = training.output().getCurrentValidationLoss();
 			wait = 0;
 		} else {
 			if(!inCooldown()) {
 				wait += 1;
 				if(wait >= patience) {
-					float oldLR = training.getCurrentLearningRate();
+					float oldLR = training.output().getCurrentLearningRate();
 					if(oldLR > min_lr) {
 						float newLR = oldLR * factor;
 						newLR = Math.max(newLR, min_lr);
-						training.setCurrentLearningRate(newLR);
+						training.setLearningRate(newLR);
 						if(verbose) {
 							System.out.println("Reducing learning rate to " + newLR);
 						}

@@ -33,7 +33,7 @@ public class TrainOnNoise {
 		n2v.addTrainingData(ij.op().convert().float32(trainingBatches));
 		n2v.addValidationData(ij.op().convert().float32(validationBatches));
 		n2v.train();
-		File latestModel = n2v.exportLatestTrainedModel();
+		File latestModel = n2v.output().exportLatestTrainedModel();
 		System.out.println("latest: " + latestModel);
 		n2v.dispose();
 	}

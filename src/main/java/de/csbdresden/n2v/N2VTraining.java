@@ -9,7 +9,6 @@ import net.imagej.tensorflow.TensorFlowService;
 import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
 import net.imglib2.FinalInterval;
-import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
@@ -18,36 +17,27 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.apache.commons.compress.utils.IOUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.app.StatusService;
-import org.scijava.display.Display;
-import org.scijava.display.DisplayService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.thread.DefaultThreadService;
 import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
-import org.scijava.util.POM;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -92,16 +82,9 @@ public class N2VTraining {
 	private static final String lrOpName = "Adam/lr/read";
 	private static final String lrAssignOpName = "Adam/lr";
 
-	private boolean checkpointExists;
-	private Tensor< String > checkpointPrefix;
-	private FloatType mean;
-	private FloatType stdDev;
-
-	private File mostRecentModelDir;
-	private File bestModelDir;
-
 	private N2VProgress dialog;
 	private PreviewHandler previewHandler;
+	private OutputHandler outputHandler;
 
 	private final List< RandomAccessibleInterval< FloatType > > X = new ArrayList<>();
 	private final List< RandomAccessibleInterval< FloatType > > validationX = new ArrayList<>();
@@ -115,18 +98,9 @@ public class N2VTraining {
 
 	private int trainDimensions = 2;
 
-	private float currentLearningRate = 0.0004f;
-	private float currentLoss = Float.MAX_VALUE;
-	private float currentAbs = Float.MAX_VALUE;
-	private float currentMse = Float.MAX_VALUE;
-	private float currentValidationLoss = Float.MAX_VALUE;
-	private float bestValidationLoss = Float.MAX_VALUE;
-
 	private boolean stopTraining = false;
-	private boolean noCheckpointSaved = true;
 
 	private List<TrainingCallback> onEpochDoneCallbacks = new ArrayList<>();
-	private List<TrainingCallback> onNewBestModelCallbacks = new ArrayList<>();
 	private List<TrainingCanceledCallback> onTrainingCanceled = new ArrayList<>();
 
 	//TODO make setters etc.
@@ -158,6 +132,8 @@ public class N2VTraining {
 	}
 	public void init() {
 
+		outputHandler = new OutputHandler(trainDimensions);
+
 		if (Thread.interrupted()) return;
 		if(!headless()) {
 			dialog = N2VProgress.create( this, numEpochs, stepsPerEpoch, statusService, new DefaultThreadService() );
@@ -179,7 +155,7 @@ public class N2VTraining {
 		logService.info( tensorFlowService.getStatus().getInfo() );
 
 		addCallbackOnEpochDone(new ReduceLearningRateOnPlateau()::reduceLearningRateOnPlateau);
-		addCallbackOnEpochDone(this::copyBestModel);
+		addCallbackOnEpochDone(outputHandler::copyBestModel);
 
 	}
 	private boolean headless() {
@@ -215,8 +191,14 @@ public class N2VTraining {
 			this.session = sess;
 
 			try {
-				if(!continueTraining) loadUntrainedGraph(graph);
-				else loadTrainedGraph(graph, zipFile);
+				if(!continueTraining) {
+					loadUntrainedGraph(graph);
+					outputHandler.createSavedModelDirs();
+				}
+				else {
+					File trainedModel = loadTrainedGraph(graph, zipFile);
+					outputHandler.createSavedModelDirsFromExisting(trainedModel);
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -225,20 +207,14 @@ public class N2VTraining {
 			Operation opTrain = graph.operation( trainingTargetOpName );
 			if ( opTrain == null ) throw new RuntimeException( "Training op not found" );
 
-			if (checkpointExists) {
-				sess.runner()
-						.feed("save/Const", checkpointPrefix)
-						.addTarget("save/restore_all").run();
-			} else {
-				sess.runner().addTarget("init").run();
-			}
+			outputHandler.initTensors(sess);
 
 			if (Thread.interrupted()) return;
 			logService.info("Normalizing..");
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
-			writeModelConfigFile();
+			outputHandler.writeModelConfigFile();
 
 			if (Thread.interrupted()) return;
 			logService.info("Augment tiles..");
@@ -315,8 +291,8 @@ public class N2VTraining {
 
 					runTrainingOp(sess, tensorWeights, item);
 
-					losses.add((double) currentLoss);
-					progressPercentage(j + 1, stepsPerEpoch, currentLoss, currentAbs, currentMse, currentLearningRate);
+					losses.add((double) outputHandler.getCurrentLoss());
+					logStatusInConsole(j + 1, stepsPerEpoch, outputHandler);
 					if(!headless()) dialog.updateTrainingProgress(i + 1, j + 1);
 
 					index++;
@@ -325,9 +301,10 @@ public class N2VTraining {
 
 				if (Thread.interrupted()) return;
 				training_data.on_epoch_end();
-				saveCheckpoint(sess);
-				currentValidationLoss = validate(sess, validation_data, tensorWeights);
-				if(!headless()) dialog.updateTrainingChart(i + 1, losses, currentValidationLoss);
+				outputHandler.saveCheckpoint(sess);
+				float validationLoss = validate(sess, validation_data, tensorWeights);
+				outputHandler.setCurrentValidationLoss(validationLoss);
+				if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
 				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
 			}
 
@@ -395,9 +372,9 @@ public class N2VTraining {
 	}
 
 	private void normalize() {
-		mean = new FloatType();
+		FloatType mean = outputHandler.getMean();
+		FloatType stdDev = outputHandler.getStdDev();
 		mean.set( opService.stats().mean( Views.iterable( Views.stack(X) ) ).getRealFloat() );
-		stdDev = new FloatType();
 		stdDev.set( opService.stats().stdDev( Views.iterable( Views.stack(X) ) ).getRealFloat() );
 		logService.info("mean: " + mean.get());
 		logService.info("stdDev: " + stdDev.get());
@@ -412,7 +389,7 @@ public class N2VTraining {
 
 		Session.Runner runner = sess.runner();
 
-		Tensor<Float> learningRate = Tensors.create(currentLearningRate);
+		Tensor<Float> learningRate = Tensors.create(outputHandler.getCurrentLearningRate());
 		Tensor<Boolean> learningPhase = Tensors.create(true);
 		runner.feed(tensorXOpName, tensorX).feed(tensorYOpName, tensorY)
 				.feed(learningPhaseOpName, learningPhase)
@@ -424,37 +401,16 @@ public class N2VTraining {
 		runner.fetch(lrOpName);
 
 		List<Tensor<?>> fetchedTensors = runner.run();
-		currentLoss = fetchedTensors.get(0).floatValue();
-		currentAbs = fetchedTensors.get(1).floatValue();
-		currentMse = fetchedTensors.get(2).floatValue();
-		currentLearningRate = fetchedTensors.get(3).floatValue();
+		outputHandler.setCurrentLoss(fetchedTensors.get(0).floatValue());
+		outputHandler.setCurrentAbs(fetchedTensors.get(1).floatValue());
+		outputHandler.setCurrentMse(fetchedTensors.get(2).floatValue());
+		outputHandler.setCurrentLearningRate(fetchedTensors.get(3).floatValue());
 
 		fetchedTensors.forEach(Tensor::close);
 		tensorX.close();
 		tensorY.close();
 		learningPhase.close();
 		learningRate.close();
-	}
-
-	private void writeModelConfigFile() {
-		Map<String, Object> data = new HashMap<>();
-		data.put("name", "N2V");
-		POM pom = POM.getPOM(N2VTraining.class);
-		data.put("version", pom != null ? pom.getVersion() : "");
-		data.put("mean", mean.get());
-		data.put("stdDev", stdDev.get());
-		Yaml yaml = new Yaml();
-		FileWriter writer = null;
-		try {
-			writer = new FileWriter(new File(mostRecentModelDir, "config.yaml"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		yaml.dump(data, writer);
-	}
-
-	public void addCallbackOnNewBestModel(TrainingCallback callback) {
-		onNewBestModelCallbacks.add(callback);
 	}
 
 	public void addCallbackOnEpochDone(TrainingCallback callback) {
@@ -477,11 +433,6 @@ public class N2VTraining {
 			return false;
 		}
 		return true;
-	}
-
-	private void saveCheckpoint(Session sess) {
-		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
-		noCheckpointSaved = false;
 	}
 
 	private Tensor<Float> makeWeightsTensor() {
@@ -543,11 +494,11 @@ public class N2VTraining {
 	}
 
 
-	public void setCurrentLearningRate(float newLR) {
-		currentLearningRate = newLR;
+	public void setLearningRate(float newLR) {
+		outputHandler.setCurrentLearningRate(newLR);
 	}
 
-	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
+	private static void logStatusInConsole(int step, int stepTotal, OutputHandler outputHandler) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -559,7 +510,11 @@ public class N2VTraining {
 			bareDone.append( icon );
 		}
 		String bareRemain = bare.substring( remainProcent );
-		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain, loss, mse, abs, learningRate );
+		System.out.printf( "%d / %d %s%s - loss: %f mse: %f abs: %f lr: %f\n", step, stepTotal, bareDone, bareRemain,
+				outputHandler.getCurrentLoss(),
+				outputHandler.getCurrentMse(),
+				outputHandler.getCurrentAbs(),
+				outputHandler.getCurrentLearningRate() );
 	}
 
 	private void loadUntrainedGraph(Graph graph ) throws IOException {
@@ -574,20 +529,9 @@ public class N2VTraining {
 //				logService.info( name );
 //			}
 //		} );
-		bestModelDir = Files.createTempDirectory("n2v-best-").toFile();
-		String checkpointDir = Files.createTempDirectory("n2v-latest-").toAbsolutePath().toString() + File.separator + "variables";
-		checkpointPrefix = Tensors.create(Paths.get(checkpointDir, "variables").toString());
-		mostRecentModelDir = new File(checkpointDir).getParentFile();
-
-		checkpointExists = false;
-
-		String predictionGraphDir = trainDimensions == 2 ? "prediction_2d" : "prediction_3d";
-		byte[] predictionGraphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + predictionGraphDir + "/saved_model.pb") );
-		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "saved_model.pb"), predictionGraphDef);
-		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "training_model.pb"), predictionGraphDef);
 	}
 
-	private void loadTrainedGraph(Graph graph, File zipFile ) throws IOException {
+	private File loadTrainedGraph(Graph graph, File zipFile ) throws IOException {
 
 		logService.info( "Import trained graph.." );
 
@@ -609,17 +553,7 @@ public class N2VTraining {
 //				logService.info( name );
 //			}
 //		} );
-
-		mostRecentModelDir = trainedModel;
-		bestModelDir = Files.createTempDirectory("n2v-best-").toFile();
-		String checkpointDir = mostRecentModelDir.getAbsolutePath() + File.separator + "variables";
-		checkpointPrefix = Tensors.create(Paths.get(checkpointDir, "variables").toString());
-
-		checkpointExists = true;
-
-		byte[] predictionGraphDef = IOUtils.toByteArray( new FileInputStream(new File(trainedModel, "saved_model.pb")));
-		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "saved_model.pb"), predictionGraphDef);
-		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "training_graph.pb"), predictionGraphDef);
+		return trainedModel;
 	}
 
 	private List< RandomAccessibleInterval< FloatType > > createTiles( RandomAccessibleInterval< FloatType > inputRAI ) {
@@ -772,54 +706,16 @@ public class N2VTraining {
 		trainBatchDimLength = batchDimLength;
 	}
 
-	public File exportLatestTrainedModel() throws IOException {
-		if(noCheckpointSaved) return null;
-		return N2VUtils.saveTrainedModel(mostRecentModelDir);
-	}
-
-	public File exportBestTrainedModel() throws IOException {
-		if(noCheckpointSaved) return null;
-		return N2VUtils.saveTrainedModel(bestModelDir);
-	}
-
-	private void copyBestModel(N2VTraining training) {
-		if(bestValidationLoss > currentValidationLoss) {
-			bestValidationLoss = currentValidationLoss;
-			try {
-				FileUtils.copyDirectory(mostRecentModelDir, bestModelDir);
-				onNewBestModelCallbacks.forEach(callback -> callback.accept(this));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
 	public N2VProgress getDialog() {
 		return dialog;
 	}
 
-	public FloatType getMean() {
-		return mean;
-	}
-
-	public FloatType getStdDev() {
-		return stdDev;
-	}
-
-	public int getTrainDimensions() {
-		return trainDimensions;
+	public OutputHandler output() {
+		return outputHandler;
 	}
 
 	public void setTrainDimensions(int trainDimensions) {
 		this.trainDimensions = trainDimensions;
-	}
-
-	public float getCurrentLearningRate() {
-		return currentLearningRate;
-	}
-
-	public float getCurrentValidationLoss() {
-		return currentValidationLoss;
 	}
 
 	public void setNeighborhoodRadius(int radius) {
@@ -827,7 +723,7 @@ public class N2VTraining {
 	}
 
 	public void stopTraining() {
-		if(session != null) saveCheckpoint(session);
+		if(session != null) outputHandler.saveCheckpoint(session);
 		stopTraining = true;
 		if(future != null) {
 			future.cancel(true);
@@ -858,7 +754,7 @@ public class N2VTraining {
 
 	public void dispose() {
 		if(dialog != null) dialog.dispose();
-		if(checkpointPrefix != null) checkpointPrefix.close();
+		if(outputHandler != null) outputHandler.dispose();
 	}
 
 	public static void main( final String... args ) throws Exception {

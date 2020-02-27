@@ -2,9 +2,6 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.Views;
 import org.scijava.Cancelable;
 import org.scijava.Context;
 import org.scijava.ItemIO;
@@ -89,10 +86,10 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 			return;
 		}
 		try {
-			File savedModel = n2v.exportLatestTrainedModel();
+			File savedModel = n2v.output().exportLatestTrainedModel();
 			if(savedModel == null) return;
 			latestTrainedModelPath = savedModel.getAbsolutePath();
-			savedModel = n2v.exportBestTrainedModel();
+			savedModel = n2v.output().exportBestTrainedModel();
 			bestTrainedModelPath = savedModel.getAbsolutePath();
 		} catch (IOException e) {
 			e.printStackTrace();

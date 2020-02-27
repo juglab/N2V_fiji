@@ -4,7 +4,6 @@ import de.csbdresden.n2v.N2VPrediction;
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
 import net.imglib2.Cursor;
-import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
@@ -75,10 +74,10 @@ public class ReproducibilityTest<T extends RealType<T>> {
 
 	private void calculatePSNR(N2VTraining training) {
 		N2VPrediction prediction = new N2VPrediction(ij.context());
-		prediction.setMean(training.getMean());
-		prediction.setStdDev(training.getStdDev());
+		prediction.setMean(training.output().getMean());
+		prediction.setStdDev(training.output().getStdDev());
 		try {
-			prediction.setModelFile(training.exportLatestTrainedModel());
+			prediction.setModelFile(training.output().exportLatestTrainedModel());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

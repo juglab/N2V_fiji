@@ -158,10 +158,10 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 			return;
 		}
 		try {
-			File savedModel = n2v.exportLatestTrainedModel();
+			File savedModel = n2v.output().exportLatestTrainedModel();
 			if(savedModel == null) return;
 			latestTrainedModelPath = savedModel.getAbsolutePath();
-			savedModel = n2v.exportBestTrainedModel();
+			savedModel = n2v.output().exportBestTrainedModel();
 			bestTrainedModelPath = savedModel.getAbsolutePath();
 		} catch (IOException e) {
 			e.printStackTrace();
