@@ -1,13 +1,17 @@
 package de.csbdresden.n2v;
 
+import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
+import org.scijava.log.Logger;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -132,4 +136,36 @@ public class N2VDataGenerator {
 		batches.addAll(augmented);
 	}
 
+	static List< RandomAccessibleInterval<FloatType> > createTiles(RandomAccessibleInterval< FloatType > inputRAI, int trainDimensions, long batchDimLength, Logger logger ) {
+
+		long maxBatchDimPossible = getSmallestInputDim(inputRAI, trainDimensions);
+
+		maxBatchDimPossible = Math.min(batchDimLength, maxBatchDimPossible);
+		if(maxBatchDimPossible < batchDimLength) {
+			logger.warn("Cannot create batches of edge length " + batchDimLength + ", max possible length is " + maxBatchDimPossible);
+		}
+		long[] batchShapeData = new long[trainDimensions];
+		Arrays.fill(batchShapeData, maxBatchDimPossible);
+		FinalInterval batchShape = new FinalInterval(batchShapeData);
+//		logger.info( "Creating tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
+		List< RandomAccessibleInterval< FloatType > > data = new ArrayList<>();
+		data.add( inputRAI );
+		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.generateBatchesFromList(
+				data,
+				batchShape);
+		long[] tiledim = new long[ tiles.get( 0 ).numDimensions() ];
+		tiles.get( 0 ).dimensions( tiledim );
+		logger.info( "Generated " + tiles.size() + " tiles of shape " + Arrays.toString( tiledim ) );
+//		RandomAccessibleInterval<FloatType> tilesStack = Views.stack(tiles);
+//		uiService.show("tiles", tilesStack);
+		return tiles;
+	}
+
+	private static long getSmallestInputDim(RandomAccessibleInterval<FloatType> img, int maxDimensions) {
+		long res = img.dimension(0);
+		for (int i = 1; i < img.numDimensions() && i < maxDimensions; i++) {
+			if(img.dimension(i) < res) res = img.dimension(i);
+		}
+		return res;
+	}
 }

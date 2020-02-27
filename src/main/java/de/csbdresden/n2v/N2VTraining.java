@@ -8,7 +8,6 @@ import net.imagej.ops.OpService;
 import net.imagej.tensorflow.TensorFlowService;
 import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
-import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
@@ -556,47 +555,13 @@ public class N2VTraining {
 		return trainedModel;
 	}
 
-	private List< RandomAccessibleInterval< FloatType > > createTiles( RandomAccessibleInterval< FloatType > inputRAI ) {
-
-		long maxBatchDimPossible = getSmallestInputDim(inputRAI, trainDimensions);
-
-		maxBatchDimPossible = Math.min(trainBatchDimLength, maxBatchDimPossible);
-		if(maxBatchDimPossible < trainBatchDimLength) {
-			logService.warn("Cannot create batches of edge length " + trainBatchDimLength + ", max possible length is " + maxBatchDimPossible);
-		}
-		long[] batchShapeData = new long[trainDimensions];
-		Arrays.fill(batchShapeData, maxBatchDimPossible);
-		FinalInterval batchShape = new FinalInterval(batchShapeData);
-//		logService.info( "Creating tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
-		List< RandomAccessibleInterval< FloatType > > data = new ArrayList<>();
-		data.add( inputRAI );
-		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.generateBatchesFromList(
-				data,
-				batchShape);
-		long[] tiledim = new long[ tiles.get( 0 ).numDimensions() ];
-		tiles.get( 0 ).dimensions( tiledim );
-		logService.info( "Generated " + tiles.size() + " tiles of shape " + Arrays.toString( tiledim ) );
-
-//		RandomAccessibleInterval<FloatType> tilesStack = Views.stack(tiles);
-//		uiService.show("tiles", tilesStack);
-		return tiles;
-	}
-
-	private long getSmallestInputDim(RandomAccessibleInterval<FloatType> img, int maxDimensions) {
-		long res = img.dimension(0);
-		for (int i = 1; i < img.numDimensions() && i < maxDimensions; i++) {
-			if(img.dimension(i) < res) res = img.dimension(i);
-		}
-		return res;
-	}
-
 	public void addTrainingAndValidationData(RandomAccessibleInterval<FloatType> training, double validationAmount) {
 		if (Thread.interrupted()) return;
 
 		logService.info( "Tile training and validation data.." );
 		dialog.setCurrentTaskMessage("Tiling training and validation data" );
 
-		List< RandomAccessibleInterval< FloatType > > tiles = createTiles( training );
+		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.createTiles( training, trainDimensions, trainBatchDimLength, logService );
 
 		int trainEnd = (int) (tiles.size() * (1 - validationAmount));
 		for (int i = 0; i < trainEnd; i++) {
@@ -639,7 +604,7 @@ public class N2VTraining {
 
 		logService.info("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
-		X.addAll(createTiles( training ));
+		X.addAll(N2VDataGenerator.createTiles( training, trainDimensions, trainBatchDimLength, logService ));
 	}
 
 	public void addTrainingData(File trainingFolder) {
@@ -667,7 +632,7 @@ public class N2VTraining {
 
 		logService.info("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
-		validationX.addAll(createTiles( validation ));
+		validationX.addAll(N2VDataGenerator.createTiles( validation, trainDimensions, trainBatchDimLength, logService ));
 	}
 
 	public void addValidationData(File trainingFolder) {
