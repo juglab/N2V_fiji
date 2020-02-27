@@ -48,6 +48,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class N2VTraining {
 
@@ -120,28 +125,38 @@ public class N2VTraining {
 
 	private List<TrainingCallback> onEpochDoneCallbacks = new ArrayList<>();
 	private List<TrainingCallback> onNewBestModelCallbacks = new ArrayList<>();
+	private List<TrainingCanceledCallback> onTrainingCanceled = new ArrayList<>();
 
 	//TODO make setters etc.
 	private boolean continueTraining = false;
 	private File zipFile;
+	private boolean canceled = false;
+	private ExecutorService pool;
+	private Future<?> future;
+	private Session session;
 
 	public interface TrainingCallback {
 
 		void accept(N2VTraining training);
-
 	}
+
+	public interface TrainingCanceledCallback {
+		void accept();
+	}
+
 	public N2VTraining(Context context) {
 		context.inject(this);
 	}
 
 	public void init(String trainedModel) {
+		if (Thread.interrupted()) return;
 		continueTraining = true;
 		zipFile = new File(trainedModel);
 		init();
 	}
-
 	public void init() {
 
+		if (Thread.interrupted()) return;
 		if(!headless()) {
 			dialog = N2VProgress.create( this, numEpochs, stepsPerEpoch, statusService, new DefaultThreadService() );
 			dialog.addTask( "Preparation" );
@@ -156,6 +171,7 @@ public class N2VTraining {
 
 		}
 
+		if (Thread.interrupted()) return;
 		logService.info( "Load TensorFlow.." );
 		tensorFlowService.loadLibrary();
 		logService.info( tensorFlowService.getStatus().getInfo() );
@@ -164,20 +180,37 @@ public class N2VTraining {
 		addCallbackOnEpochDone(this::copyBestModel);
 
 	}
-
 	private boolean headless() {
 		return uiService.isHeadless();
 	}
 
 	public void train() {
 
-		if(stopTraining) return;
+		pool = Executors.newSingleThreadExecutor();
 
+		try {
+
+			future = pool.submit(this::mainThread);
+			future.get();
+
+		} catch(InterruptedException | CancellationException e) {
+			if(stopTraining) return;
+			logService.warn("N2V training canceled.");
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private void mainThread() {
 		logService.info( "Create session.." );
 		if ( !headless() ) dialog.setCurrentTaskMessage( "Creating session" );
+		if (Thread.interrupted()) return;
 
 		try (Graph graph = new Graph();
-				Session sess = new Session( graph )) {
+		     Session sess = new Session( graph )) {
+
+			this.session = sess;
 
 			try {
 				if(!continueTraining) loadUntrainedGraph(graph);
@@ -186,6 +219,7 @@ public class N2VTraining {
 				e.printStackTrace();
 			}
 
+			if (Thread.interrupted()) return;
 			Operation opTrain = graph.operation( trainingTargetOpName );
 			if ( opTrain == null ) throw new RuntimeException( "Training op not found" );
 
@@ -197,25 +231,21 @@ public class N2VTraining {
 				sess.runner().addTarget("init").run();
 			}
 
-			if(stopTraining) return;
-
-			logService.info("Prepare data for training..");
-			if(!headless()) dialog.setCurrentTaskMessage("Preparing data for training");
-
+			if (Thread.interrupted()) return;
 			logService.info("Normalizing..");
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
 			writeModelConfigFile();
 
+			if (Thread.interrupted()) return;
 			logService.info("Augment tiles..");
 			if(!headless()) dialog.setCurrentTaskMessage("Augment tiles ...");
 
 			N2VDataGenerator.augment(X);
 			N2VDataGenerator.augment(validationX);
 
-			if(stopTraining) return;
-
+			if (Thread.interrupted()) return;
 			logService.info("Prepare training batches...");
 			if(!headless()) dialog.setCurrentTaskMessage("Prepare training batches...");
 
@@ -228,8 +258,7 @@ public class N2VTraining {
 
 			N2VDataWrapper<FloatType> training_data = makeTrainingData(n2v_perc_pix);
 
-			if(stopTraining) return;
-
+			if (Thread.interrupted()) return;
 			logService.info("Prepare validation batches..");
 			if(!headless()) dialog.setCurrentTaskMessage("Prepare validation batches...");
 
@@ -240,13 +269,7 @@ public class N2VTraining {
 //			List<RandomAccessibleInterval<FloatType>> targets = new ArrayList<>();
 			Tensor<Float> tensorWeights = makeWeightsTensor();
 
-			if(stopTraining) {
-				if(!headless()) dialog.dispose();
-				return;
-			}
-
-			//TODO GUI - display time estimate until training is done - each step should take roughly the same time
-
+			if (Thread.interrupted()) return;
 			logService.info("Start training..");
 			if(!headless()) {
 				dialog.setCurrentTaskMessage("Starting training ...");
@@ -257,6 +280,10 @@ public class N2VTraining {
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
 			remainingTimeEstimator.setNumSteps(numEpochs);
 
+			if(!headless()) {
+				updateSplitImage(validation_data.get(0).getFirst(), validation_data.get(0).getFirst());
+			}
+
 			for (int i = 0; i < numEpochs; i++) {
 				remainingTimeEstimator.setCurrentStep(i);
 				String remainingTimeString = remainingTimeEstimator.getRemainingTimeString();
@@ -265,6 +292,11 @@ public class N2VTraining {
 				List<Double> losses = new ArrayList<>(stepsPerEpoch);
 
 				for (int j = 0; j < stepsPerEpoch && !stopTraining; j++) {
+
+					if (Thread.interrupted()) {
+						tensorWeights.close();
+						return;
+					}
 
 					if (index * trainBatchSize + trainBatchSize > X.size() - 1) {
 						index = 0;
@@ -287,23 +319,19 @@ public class N2VTraining {
 
 				}
 
-				if(stopTraining) {
-					saveCheckpoint(sess);
-					return;
-				} else {
-					training_data.on_epoch_end();
-					saveCheckpoint(sess);
-					currentValidationLoss = validate(sess, validation_data, tensorWeights);
-					if(!headless()) dialog.updateTrainingChart(i + 1, losses, currentValidationLoss);
-					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
-				}
+				if (Thread.interrupted()) return;
+				training_data.on_epoch_end();
+				saveCheckpoint(sess);
+				currentValidationLoss = validate(sess, validation_data, tensorWeights);
+				if(!headless()) dialog.updateTrainingChart(i + 1, losses, currentValidationLoss);
+				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
 			}
 
 			tensorWeights.close();
 
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
-			if ( !headless() ) dialog.setTaskDone( 2 );
+			if ( !headless() ) dialog.setTaskDone( 1 );
 			logService.info( "Training done." );
 
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
@@ -458,11 +486,6 @@ public class N2VTraining {
 		return Tensors.create(weightsdata);
 	}
 
-	public boolean cancelTraining() {
-		stopTraining = true;
-		return true;
-	}
-
 	private float validate(Session sess, List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validationData, Tensor tensorWeights) {
 
 		float avgLoss = 0;
@@ -516,6 +539,7 @@ public class N2VTraining {
 	}
 
 	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
+		if (Thread.interrupted()) return;
 		if(splitImage == null) splitImage = opService.copy().rai(out);
 		else opService.copy().rai(splitImage, out);
 		if(trainDimensions == 2) updateSplitImage2D(in);
@@ -696,8 +720,7 @@ public class N2VTraining {
 	}
 
 	public void addTrainingAndValidationData(RandomAccessibleInterval<FloatType> training, double validationAmount) {
-
-		if(stopTraining) return;
+		if (Thread.interrupted()) return;
 
 		logService.info( "Tile training and validation data.." );
 		dialog.setCurrentTaskMessage("Tiling training and validation data" );
@@ -721,7 +744,7 @@ public class N2VTraining {
 		if(trainingFolder.isDirectory()) {
 			File[] imgs = trainingFolder.listFiles();
 			for (File file : imgs) {
-				if(stopTraining) return;
+				if (Thread.interrupted()) return;
 				try {
 					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
 					addTrainingAndValidationData(convertToFloat(img), validationAmount);
@@ -738,7 +761,7 @@ public class N2VTraining {
 
 	public void addTrainingData(RandomAccessibleInterval<FloatType> training) {
 
-		if(stopTraining) return;
+		if (Thread.interrupted()) return;
 
 		logService.info( "Tile training data.." );
 		if(!headless()) dialog.setCurrentTaskMessage("Tiling training data" );
@@ -753,7 +776,7 @@ public class N2VTraining {
 		if(trainingFolder.isDirectory()) {
 			File[] imgs = trainingFolder.listFiles();
 			for (File file : imgs) {
-				if(stopTraining) return;
+				if (Thread.interrupted()) return;
 				try {
 					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
 					addTrainingData(convertToFloat(img));
@@ -766,7 +789,7 @@ public class N2VTraining {
 
 	public void addValidationData(RandomAccessibleInterval<FloatType> validation) {
 
-		if(stopTraining) return;
+		if (Thread.interrupted()) return;
 
 		logService.info( "Tile validation data.." );
 		if(!headless()) dialog.setCurrentTaskMessage("Tiling validation data" );
@@ -781,7 +804,7 @@ public class N2VTraining {
 		if(trainingFolder.isDirectory()) {
 			File[] imgs = trainingFolder.listFiles();
 			for (File file : imgs) {
-				if(stopTraining) return;
+				if (Thread.interrupted()) return;
 				try {
 					RandomAccessibleInterval img = datasetIOService.open(file.getAbsolutePath()).getImgPlus().getImg();
 					addValidationData(convertToFloat(img));
@@ -834,12 +857,42 @@ public class N2VTraining {
 		}
 	}
 
+	public N2VProgress getDialog() {
+		return dialog;
+	}
+
 	public FloatType getMean() {
 		return mean;
 	}
 
 	public FloatType getStdDev() {
 		return stdDev;
+	}
+
+	public void cancel() {
+		canceled = true;
+		onTrainingCanceled.forEach(TrainingCanceledCallback::accept);
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
+	}
+
+	public void stopTraining() {
+		if(session != null) saveCheckpoint(session);
+		stopTraining = true;
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
+	}
+
+	public boolean isCanceled() {
+		return canceled;
 	}
 
 	public void dispose() {
@@ -865,6 +918,10 @@ public class N2VTraining {
 
 	public void setNeighborhoodRadius(int radius) {
 		this.neighborhoodRadius = radius;
+	}
+
+	public void addCallbackOnCancel(TrainingCanceledCallback callback) {
+		onTrainingCanceled.add(callback);
 	}
 
 	public static void main( final String... args ) throws Exception {
@@ -898,4 +955,5 @@ public class N2VTraining {
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
 	}
+
 }

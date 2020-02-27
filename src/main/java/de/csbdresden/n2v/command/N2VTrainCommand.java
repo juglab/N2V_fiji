@@ -10,11 +10,17 @@ import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train" )
 public class N2VTrainCommand implements Command, Cancelable {
@@ -58,10 +64,31 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Parameter
 	private Context context;
 
+	@Parameter
+	private LogService logService;
+
 	private boolean canceled;
+	private ExecutorService pool;
+	private Future<?> future;
 
 	@Override
 	public void run() {
+
+		pool = Executors.newSingleThreadExecutor();
+
+		try {
+
+			future = pool.submit(this::mainThread);
+			future.get();
+
+		} catch(CancellationException e) {
+			logService.warn("N2V training command canceled.");
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void mainThread() {
 		N2VTraining n2v = new N2VTraining(context);
 		n2v.setTrainDimensions(mode3D ? 3 : 2);
 		n2v.setNumEpochs(numEpochs);
@@ -80,6 +107,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 				n2v.addValidationData(validation);
 			}
 			n2v.train();
+			if(n2v.isCanceled()) cancel("");
 		}
 		catch(Exception e) {
 			n2v.dispose();
@@ -105,6 +133,12 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Override
 	public void cancel(String reason) {
 		canceled = true;
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
 	}
 
 	@Override

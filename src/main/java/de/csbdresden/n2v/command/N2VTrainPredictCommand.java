@@ -1,23 +1,34 @@
 package de.csbdresden.n2v.command;
 
+import de.csbdresden.n2v.N2VPrediction;
+import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
+import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
+import org.scijava.Cancelable;
+import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
-import org.scijava.command.CommandModule;
 import org.scijava.command.CommandService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train + predict" )
-public class N2VTrainPredictCommand implements Command {
+public class N2VTrainPredictCommand implements Command, Cancelable {
 
 	@Parameter(label = "Image used for training")
 	private RandomAccessibleInterval< FloatType > training;
@@ -81,8 +92,36 @@ public class N2VTrainPredictCommand implements Command {
 	@Parameter
 	private OpService opService;
 
+	@Parameter
+	private Context context;
+
+	@Parameter
+	private LogService logService;
+
+	private boolean canceled = false;
+
+	private ExecutorService pool;
+	private Future<?> future;
+	private N2VTraining n2v;
+
 	@Override
 	public void run() {
+
+		pool = Executors.newSingleThreadExecutor();
+
+		try {
+
+			future = pool.submit(this::mainThread);
+			future.get();
+
+		} catch(CancellationException e) {
+			logService.warn("N2V train + predict command canceled.");
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void mainThread() {
 
 		if(training.equals(prediction)) {
 			prediction = opService.convert().float32( Views.iterable( prediction ) );
@@ -92,45 +131,83 @@ public class N2VTrainPredictCommand implements Command {
 			training = opService.convert().float32( Views.iterable( training ) );
 		}
 
-		if(runTraining()) runPrediction();
-
-	}
-
-	private boolean runTraining() {
+		n2v = new N2VTraining(context);
+		n2v.addCallbackOnCancel(this::cancel);
+		n2v.setTrainDimensions(mode3D ? 3 : 2);
+		n2v.setNumEpochs(numEpochs);
+		n2v.setStepsPerEpoch(numStepsPerEpoch);
+		n2v.setBatchSize(batchSize);
+		n2v.setBatchDimLength(batchDimLength);
+		n2v.setPatchDimLength(patchDimLength);
+		n2v.setNeighborhoodRadius(neighborhoodRadius);
+		n2v.init();
 		try {
-			final CommandModule module = commandService.run(
-					N2VTrainCommand.class, false,
-					"training", training,
-					"validation", prediction,
-					"numStepsPerEpoch", numStepsPerEpoch,
-					"numEpochs", numEpochs,
-					"batchSize", batchSize,
-					"batchDimLength", batchDimLength,
-					"patchDimLength", patchDimLength,
-					"neighborhoodRadius", neighborhoodRadius,
-					"mode3D", mode3D).get();
-			bestTrainedModelPath = (String) module.getOutput("bestTrainedModelPath");
-			latestTrainedModelPath = (String) module.getOutput("latestTrainedModelPath");
-			if(latestTrainedModelPath == null) return false;
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-			return false;
+			if(training.equals(prediction)) {
+				System.out.println("Using 10% of training data for validation");
+				n2v.addTrainingAndValidationData(training, 0.1);
+			} else {
+				n2v.addTrainingData(training);
+				n2v.addValidationData(prediction);
+			}
+			n2v.train();
+			if(n2v.isCanceled()) cancel("");
 		}
-		return true;
-	}
-
-	private void runPrediction() {
+		catch(Exception e) {
+			n2v.dispose();
+			e.printStackTrace();
+			return;
+		}
 		try {
-			final CommandModule module = commandService.run(
-					N2VPredictCommand.class, false,
-					"prediction", prediction,
-					"modelFile", new File(bestTrainedModelPath)).get();
-			output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
-		} catch (InterruptedException | ExecutionException e) {
+			File savedModel = n2v.exportLatestTrainedModel();
+			if(savedModel == null) return;
+			latestTrainedModelPath = savedModel.getAbsolutePath();
+			savedModel = n2v.exportBestTrainedModel();
+			bestTrainedModelPath = savedModel.getAbsolutePath();
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		n2v.getDialog().setTaskStart(2);
+
+		if(latestTrainedModelPath == null) return;
+
+		N2VPrediction prediction = new N2VPrediction(context);
+		prediction.setModelFile(new File(latestTrainedModelPath));
+		int padding = 32;
+		FinalInterval expand = Intervals.expand(this.prediction, padding);
+		RandomAccessibleInterval output = prediction.predict(Views.zeroMin(Views.interval(Views.extendZero(this.prediction), expand)));
+		this.output = Views.zeroMin(Views.interval(output, Intervals.expand(output, -padding)));
+
+		n2v.getDialog().setTaskDone(2);
+
 	}
 
+	private void cancel() {
+		cancel("");
+	}
+
+	@Override
+	public boolean isCanceled() {
+		return canceled;
+	}
+
+	@Override
+	public void cancel(String reason) {
+		canceled = true;
+		if(n2v != null) n2v.dispose();
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
+	}
+
+	@Override
+	public String getCancelReason() {
+		return null;
+	}
+	
 	public static void main( final String... args ) throws Exception {
 
 		final ImageJ ij = new ImageJ();

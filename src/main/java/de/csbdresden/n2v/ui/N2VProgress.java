@@ -8,13 +8,10 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -23,12 +20,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.border.MatteBorder;
-import javax.swing.border.TitledBorder;
 import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 
 import org.scijava.app.StatusService;
 import org.scijava.thread.ThreadService;
@@ -38,8 +30,8 @@ import de.csbdresden.n2v.N2VTraining;
 public class N2VProgress extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-
 	private class GuiTask {
+
 
 		public JLabel status;
 		public JLabel title;
@@ -63,6 +55,8 @@ public class N2VProgress extends JPanel {
 
 	private final JPanel taskContainer;
 	private final JFrame frame;
+	private final JButton finishBtn;
+	private final JButton cancelBtn;
 
 	private final SimpleAttributeSet red = new SimpleAttributeSet();
 
@@ -114,27 +108,14 @@ public class N2VProgress extends JPanel {
 		gbc.insets = new Insets( 5, 5, 5, 5 );
 		gbc.gridx = 0;
 
-		JButton cancelBtn = new JButton( "Cancel" );
-		cancelBtn.addActionListener( new ActionListener() {
-
-			@Override
-			public void actionPerformed( ActionEvent e ) {
-				System.exit( 0 );
-			}
-
-		} );
+		cancelBtn = new JButton( "Cancel" );
+		cancelBtn.addActionListener(e -> n2v.cancel());
 		buttonsPanel.add( cancelBtn, gbc );
 
 		gbc.gridx = 1;
-		JButton finishBtn = new JButton( "Finish Training" );
-		finishBtn.addActionListener( new ActionListener() {
-
-			@Override
-			public void actionPerformed( ActionEvent e ) {
-				//Call a method in N2V
-			}
-
-		} );
+		finishBtn = new JButton( "Finish Training" );
+		finishBtn.addActionListener( e -> n2v.stopTraining() );
+		finishBtn.setEnabled(false);
 		buttonsPanel.add( finishBtn, gbc );
 
 		add( buttonsPanel, BorderLayout.SOUTH );
@@ -143,6 +124,7 @@ public class N2VProgress extends JPanel {
 		repaint();
 
 		frame.setContentPane( this );
+		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
 	}
 
@@ -183,11 +165,18 @@ public class N2VProgress extends JPanel {
 	}
 
 	public void setTaskStart( final int task ) {
+		if(task == 1) {
+			finishBtn.setEnabled(true);
+		}
 		currentTask = task;
 		setCurrentTaskStatus( STATUS_RUNNING );
 	}
 
 	public void setTaskDone( final int task ) {
+		if(task == 2) {
+			cancelBtn.setEnabled(false);
+			finishBtn.setText("Close");
+		}
 		tasks.get( currentTask ).taskDone = true;
 		setTaskStatus( task, STATUS_DONE );
 		setTaskMessage( task, "" );
@@ -261,7 +250,9 @@ public class N2VProgress extends JPanel {
 	}
 
 	public void dispose() {
-		if ( frame.isVisible() ) frame.dispose();
+		if ( frame.isVisible() ) {
+			frame.dispose();
+		}
 	}
 
 	public void updateTrainingChart( int i, List< Double > losses, float validationLoss ) {
