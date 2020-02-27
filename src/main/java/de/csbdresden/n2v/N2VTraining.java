@@ -806,37 +806,6 @@ public class N2VTraining {
 		return stdDev;
 	}
 
-	public void cancel() {
-		canceled = true;
-		onTrainingCanceled.forEach(TrainingCanceledCallback::accept);
-		if(future != null) {
-			future.cancel(true);
-		}
-		if(pool != null) {
-			pool.shutdownNow();
-		}
-	}
-
-	public void stopTraining() {
-		if(session != null) saveCheckpoint(session);
-		stopTraining = true;
-		if(future != null) {
-			future.cancel(true);
-		}
-		if(pool != null) {
-			pool.shutdownNow();
-		}
-	}
-
-	public boolean isCanceled() {
-		return canceled;
-	}
-
-	public void dispose() {
-		if(dialog != null) dialog.dispose();
-		if(checkpointPrefix != null) checkpointPrefix.close();
-	}
-
 	public int getTrainDimensions() {
 		return trainDimensions;
 	}
@@ -857,8 +826,39 @@ public class N2VTraining {
 		this.neighborhoodRadius = radius;
 	}
 
+	public void stopTraining() {
+		if(session != null) saveCheckpoint(session);
+		stopTraining = true;
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
+	}
+
+	public void cancel() {
+		canceled = true;
+		onTrainingCanceled.forEach(TrainingCanceledCallback::accept);
+		if(future != null) {
+			future.cancel(true);
+		}
+		if(pool != null) {
+			pool.shutdownNow();
+		}
+	}
+
+	public boolean isCanceled() {
+		return canceled;
+	}
+
 	public void addCallbackOnCancel(TrainingCanceledCallback callback) {
 		onTrainingCanceled.add(callback);
+	}
+
+	public void dispose() {
+		if(dialog != null) dialog.dispose();
+		if(checkpointPrefix != null) checkpointPrefix.close();
 	}
 
 	public static void main( final String... args ) throws Exception {
