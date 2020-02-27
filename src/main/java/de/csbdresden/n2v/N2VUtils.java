@@ -29,8 +29,6 @@ import java.util.zip.ZipOutputStream;
 
 public class N2VUtils {
 
-	private static int n2v_neighborhood_radius = 5;
-
 	public static <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> normalize(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
 		Img<T> rai = opService.create().img(input, input.randomAccess().get().copy());
 		LoopBuilder.setImages( rai, input ).forEachPixel( (res, in ) -> {
