@@ -525,8 +525,13 @@ public class N2VTraining {
 	}
 
 	public void stopTraining() {
-		if(session != null) outputHandler.saveCheckpoint(session);
+		if(stopTraining) {
+			if(getDialog() != null) dialog.dispose();
+			return;
+		}
 		stopTraining = true;
+		getDialog().setTaskDone(1);
+		if(session != null) outputHandler.saveCheckpoint(session);
 		if(future != null) {
 			future.cancel(true);
 		}
