@@ -1,5 +1,6 @@
 package de.csbdresden.n2v.interactive;
 
+import de.csbdresden.n2v.N2VConfig;
 import de.csbdresden.n2v.N2VPrediction;
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
@@ -54,14 +55,15 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		predictionData.clear();
 
 		N2VTraining training = new N2VTraining(ij.context());
-		training.input().setTrainDimensions(2);
-		training.input().setNumEpochs(200);
-		training.input().setStepsPerEpoch(400);
-		training.input().setBatchSize(64);
-		training.input().setBatchDimLength(180);
-		training.input().setPatchDimLength(60);
-		training.input().setNeighborhoodRadius(2);
-		training.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-on-random.zip");
+		training.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-on-random.zip",
+				new N2VConfig()
+						.setTrainDimensions(2)
+						.setNumEpochs(200)
+						.setStepsPerEpoch(400)
+						.setBatchSize(64)
+						.setPatchDimLength(180)
+						.setPatchDimLength(60)
+						.setNeighborhoodRadius(2));
 		training.input().addTrainingData(trainImg);
 		training.input().addValidationData(validateImg);
 		training.addCallbackOnEpochDone(this::calculatePSNR);

@@ -1,5 +1,6 @@
 package de.csbdresden.n2v.interactive;
 
+import de.csbdresden.n2v.N2VConfig;
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
 import net.imglib2.FinalDimensions;
@@ -39,13 +40,14 @@ public class InteractiveTrainingRestart {
 			ij.ui().show("stack", stack);
 
 			N2VTraining n2v = new N2VTraining(ij.context());
-			n2v.input().setTrainDimensions(2);
-			n2v.input().setNumEpochs(10);
-			n2v.input().setStepsPerEpoch(10);
-			n2v.input().setBatchSize((int) batchSize);
-			n2v.input().setBatchDimLength(32);
-			n2v.input().setPatchDimLength(16);
-			n2v.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-model3853066279801947474.zip");
+			n2v.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-model3853066279801947474.zip",
+					new N2VConfig()
+							.setTrainDimensions(2)
+							.setNumEpochs(10)
+							.setStepsPerEpoch(10)
+							.setBatchSize((int)batchSize)
+							.setPatchDimLength(32)
+							.setPatchDimLength(16));
 			n2v.input().addTrainingData(stack);
 			n2v.input().addValidationData(stack);
 			n2v.train();

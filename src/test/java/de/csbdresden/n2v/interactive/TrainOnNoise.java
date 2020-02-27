@@ -1,5 +1,6 @@
 package de.csbdresden.n2v.interactive;
 
+import de.csbdresden.n2v.N2VConfig;
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
 import net.imglib2.FinalDimensions;
@@ -23,13 +24,13 @@ public class TrainOnNoise {
 		validationBatches.forEach(pix -> pix.set(random.nextInt(255)));
 
 		N2VTraining n2v = new N2VTraining(ij.context());
-		n2v.input().setTrainDimensions(2);
-		n2v.input().setNumEpochs(100);
-		n2v.input().setStepsPerEpoch(200);
-		n2v.input().setBatchSize(64);
-		n2v.input().setBatchDimLength(180);
-		n2v.input().setPatchDimLength(60);
-		n2v.init();
+		n2v.init(new N2VConfig()
+				.setTrainDimensions(2)
+				.setNumEpochs(100)
+				.setStepsPerEpoch(200)
+				.setBatchSize(64)
+				.setPatchDimLength(180)
+				.setPatchDimLength(60));
 		n2v.input().addTrainingData(ij.op().convert().float32(trainingBatches));
 		n2v.input().addValidationData(ij.op().convert().float32(validationBatches));
 		n2v.train();

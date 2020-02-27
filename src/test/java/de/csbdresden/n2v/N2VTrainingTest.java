@@ -25,13 +25,13 @@ public class N2VTrainingTest {
 
 //		for (int i = 0; i < 10; i++) {
 			N2VTraining n2v = new N2VTraining(ij.context());
-			n2v.input().setTrainDimensions(2);
-			n2v.input().setNumEpochs(2);
-			n2v.input().setStepsPerEpoch(2);
-			n2v.input().setBatchSize((int) batchSize);
-			n2v.input().setBatchDimLength(32);
-			n2v.input().setPatchDimLength(32);
-			n2v.init();
+			n2v.init(new N2VConfig()
+					.setTrainDimensions(2)
+					.setNumEpochs(2)
+					.setStepsPerEpoch(2)
+					.setBatchSize((int)batchSize)
+					.setPatchDimLength(32)
+					.setPatchDimLength(32));
 			n2v.input().addTrainingData(trainingBatches);
 			n2v.input().addValidationData(validationBatches);
 			n2v.train();
@@ -53,13 +53,13 @@ public class N2VTrainingTest {
 		long batchSize = trainingBatches.dimension(3);
 
 		N2VTraining n2v = new N2VTraining(ij.context());
-		n2v.input().setTrainDimensions(3);
-		n2v.input().setNumEpochs(1);
-		n2v.input().setStepsPerEpoch(2);
-		n2v.input().setBatchSize((int) batchSize);
-		n2v.input().setBatchDimLength(32);
-		n2v.input().setPatchDimLength(16);
-		n2v.init();
+		n2v.init(new N2VConfig()
+				.setTrainDimensions(3)
+				.setNumEpochs(1)
+				.setStepsPerEpoch(2)
+				.setBatchSize((int)batchSize)
+				.setPatchDimLength(32)
+				.setPatchDimLength(16));
 		n2v.input().addTrainingData(trainingBatches);
 		n2v.input().addValidationData(validationBatches);
 		n2v.train();

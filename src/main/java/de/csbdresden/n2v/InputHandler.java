@@ -8,6 +8,7 @@ import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import org.scijava.Context;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 
@@ -25,79 +26,19 @@ public class InputHandler {
 	@Parameter
 	DatasetIOService datasetIOService;
 
-	private int numEpochs = 300;
-	private int trainBatchSize = 180;
-	private int trainBatchDimLength = 180;
-	private int trainPatchDimLength = 60;
-	private int stepsPerEpoch = 200;
-	private int neighborhoodRadius = 5;
-	private int trainDimensions = 2;
+	private final N2VConfig config;
 	private N2VProgress dialog;
 
 	private final List< RandomAccessibleInterval< FloatType > > X = new ArrayList<>();
 	private final List< RandomAccessibleInterval< FloatType > > validationX = new ArrayList<>();
 
-	public InputHandler() {
+	public InputHandler(Context context, N2VConfig config) {
+		this.config = config;
+		context.inject(this);
 	}
 
 	void setDialog(N2VProgress dialog) {
 		this.dialog = dialog;
-	}
-
-	public void setStepsPerEpoch(final int steps) {
-		stepsPerEpoch = steps;
-	}
-
-	public void setNumEpochs(final int numEpochs) {
-		this.numEpochs = numEpochs;
-	}
-
-	public void setBatchSize(final int batchSize) {
-		trainBatchSize = batchSize;
-	}
-
-	public void setPatchDimLength(final int patchDimLength) {
-		trainPatchDimLength = patchDimLength;
-	}
-
-	public void setBatchDimLength(final int batchDimLength) {
-		trainBatchDimLength = batchDimLength;
-	}
-
-	public void setTrainDimensions(int trainDimensions) {
-		this.trainDimensions = trainDimensions;
-	}
-
-	public void setNeighborhoodRadius(int radius) {
-		this.neighborhoodRadius = radius;
-	}
-
-	public int getTrainDimensions() {
-		return trainDimensions;
-	}
-
-	public int getNumEpochs() {
-		return numEpochs;
-	}
-
-	public int getStepsPerEpoch() {
-		return stepsPerEpoch;
-	}
-
-	public int getTrainBatchSize() {
-		return trainBatchSize;
-	}
-
-	public long getTrainBatchDimLength() {
-		return trainBatchDimLength;
-	}
-
-	public long getTrainPatchDimLength() {
-		return trainPatchDimLength;
-	}
-
-	public int getNeighborhoodRadius() {
-		return neighborhoodRadius;
 	}
 
 	public void addTrainingAndValidationData(RandomAccessibleInterval<FloatType> training, double validationAmount) {
@@ -106,7 +47,7 @@ public class InputHandler {
 		logService.info( "Tile training and validation data.." );
 		if(dialog != null) dialog.setCurrentTaskMessage("Tiling training and validation data" );
 
-		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.createTiles( training, getTrainDimensions(), getTrainBatchDimLength(), logService );
+		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService );
 
 		int trainEnd = (int) (tiles.size() * (1 - validationAmount));
 		for (int i = 0; i < trainEnd; i++) {
@@ -149,7 +90,7 @@ public class InputHandler {
 
 		logService.info("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
-		X.addAll(N2VDataGenerator.createTiles( training, getTrainDimensions(), getTrainBatchDimLength(), logService ));
+		X.addAll(N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService ));
 	}
 
 	public void addTrainingData(File trainingFolder) {
@@ -177,7 +118,7 @@ public class InputHandler {
 
 		logService.info("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
-		validationX.addAll(N2VDataGenerator.createTiles( validation, getTrainDimensions(), getTrainBatchDimLength(), logService ));
+		validationX.addAll(N2VDataGenerator.createTiles( validation, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService ));
 	}
 
 	public void addValidationData(File trainingFolder) {

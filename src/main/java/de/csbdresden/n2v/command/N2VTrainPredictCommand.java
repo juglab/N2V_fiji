@@ -1,5 +1,6 @@
 package de.csbdresden.n2v.command;
 
+import de.csbdresden.n2v.N2VConfig;
 import de.csbdresden.n2v.N2VPrediction;
 import de.csbdresden.n2v.N2VTraining;
 import net.imagej.ImageJ;
@@ -133,14 +134,14 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 		n2v = new N2VTraining(context);
 		n2v.addCallbackOnCancel(this::cancel);
-		n2v.input().setTrainDimensions(mode3D ? 3 : 2);
-		n2v.input().setNumEpochs(numEpochs);
-		n2v.input().setStepsPerEpoch(numStepsPerEpoch);
-		n2v.input().setBatchSize(batchSize);
-		n2v.input().setBatchDimLength(batchDimLength);
-		n2v.input().setPatchDimLength(patchDimLength);
-		n2v.input().setNeighborhoodRadius(neighborhoodRadius);
-		n2v.init();
+		n2v.init(new N2VConfig()
+				.setTrainDimensions(mode3D ? 3 : 2)
+				.setNumEpochs(numEpochs)
+				.setStepsPerEpoch(numStepsPerEpoch)
+				.setBatchSize(batchSize)
+				.setPatchDimLength(batchDimLength)
+				.setPatchDimLength(patchDimLength)
+				.setNeighborhoodRadius(neighborhoodRadius));
 		try {
 			if(training.equals(prediction)) {
 				System.out.println("Using 10% of training data for validation");

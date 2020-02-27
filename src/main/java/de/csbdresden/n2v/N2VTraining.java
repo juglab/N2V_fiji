@@ -84,7 +84,7 @@ public class N2VTraining {
 	private N2VProgress dialog;
 	private PreviewHandler previewHandler;
 	private OutputHandler outputHandler;
-	private InputHandler inputHandler= new InputHandler();
+	private InputHandler inputHandler;
 
 	private boolean stopTraining = false;
 
@@ -98,6 +98,7 @@ public class N2VTraining {
 	private ExecutorService pool;
 	private Future<?> future;
 	private Session session;
+	private N2VConfig config;
 
 	public interface TrainingCallback {
 
@@ -112,19 +113,21 @@ public class N2VTraining {
 		context.inject(this);
 	}
 
-	public void init(String trainedModel) {
+	public void init(String trainedModel, N2VConfig config) {
 		if (Thread.interrupted()) return;
 		continueTraining = true;
 		zipFile = new File(trainedModel);
-		init();
+		init(config);
 	}
-	public void init() {
+	public void init(N2VConfig config) {
 
-		context.inject(inputHandler);
+		this.config = config;
+
+		inputHandler= new InputHandler(context, config);
 
 		if (Thread.interrupted()) return;
 		if(!headless()) {
-			dialog = N2VProgress.create( this, inputHandler.getNumEpochs(), inputHandler.getStepsPerEpoch(), statusService, new DefaultThreadService() );
+			dialog = N2VProgress.create( this, config.getNumEpochs(), config.getStepsPerEpoch(), statusService, new DefaultThreadService() );
 			inputHandler.setDialog(dialog);
 			dialog.addTask( "Preparation" );
 			dialog.addTask( "Training" );
@@ -170,7 +173,7 @@ public class N2VTraining {
 	}
 
 	private void mainThread() {
-		outputHandler = new OutputHandler(inputHandler.getTrainDimensions());
+		outputHandler = new OutputHandler(config.getTrainDimensions());
 		addCallbackOnEpochDone(outputHandler::copyBestModel);
 
 		logService.info( "Create session.." );
@@ -248,29 +251,29 @@ public class N2VTraining {
 			}
 
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
-			remainingTimeEstimator.setNumSteps(input().getNumEpochs());
+			remainingTimeEstimator.setNumSteps(config().getNumEpochs());
 
 
 			if(!headless()) {
-				previewHandler = new PreviewHandler(context, input().getTrainDimensions());
+				previewHandler = new PreviewHandler(context, config().getTrainDimensions());
 				previewHandler.update(validation_data.get(0).getFirst(), validation_data.get(0).getFirst());
 			}
 
-			for (int i = 0; i < input().getNumEpochs(); i++) {
+			for (int i = 0; i < config().getNumEpochs(); i++) {
 				remainingTimeEstimator.setCurrentStep(i);
 				String remainingTimeString = remainingTimeEstimator.getRemainingTimeString();
-				logService.info("Epoch " + (i + 1) + "/" + input().getNumEpochs() + " " + remainingTimeString);
+				logService.info("Epoch " + (i + 1) + "/" + config().getNumEpochs() + " " + remainingTimeString);
 
-				List<Double> losses = new ArrayList<>(input().getStepsPerEpoch());
+				List<Double> losses = new ArrayList<>(config().getStepsPerEpoch());
 
-				for (int j = 0; j < input().getStepsPerEpoch() && !stopTraining; j++) {
+				for (int j = 0; j < config().getStepsPerEpoch() && !stopTraining; j++) {
 
 					if (Thread.interrupted()) {
 						tensorWeights.close();
 						return;
 					}
 
-					if (index * input().getTrainBatchSize() + inputHandler.getTrainBatchSize() > input().getX().size() - 1) {
+					if (index * config().getTrainBatchSize() + config().getTrainBatchSize() > input().getX().size() - 1) {
 						index = 0;
 						logService.info("starting with index 0 of training batches");
 					}
@@ -284,7 +287,7 @@ public class N2VTraining {
 					runTrainingOp(sess, tensorWeights, item);
 
 					losses.add((double) outputHandler.getCurrentLoss());
-					logStatusInConsole(j + 1, input().getStepsPerEpoch(), outputHandler);
+					logStatusInConsole(j + 1, config().getStepsPerEpoch(), outputHandler);
 					if(!headless()) dialog.updateTrainingProgress(i + 1, j + 1);
 
 					index++;
@@ -314,11 +317,11 @@ public class N2VTraining {
 	}
 
 	private N2VDataWrapper<FloatType> makeTrainingData(double n2v_perc_pix) {
-		long[] patchShapeData = new long[input().getTrainDimensions()];
-		Arrays.fill(patchShapeData, input().getTrainPatchDimLength());
+		long[] patchShapeData = new long[config().getTrainDimensions()];
+		Arrays.fill(patchShapeData, config().getTrainPatchDimLength());
 		Dimensions patch_shape = new FinalDimensions(patchShapeData);
 
-		return new N2VDataWrapper<>(input().getX(), input().getTrainBatchSize(), n2v_perc_pix, patch_shape, input().getNeighborhoodRadius(), N2VDataWrapper::uniform_withCP);
+		return new N2VDataWrapper<>(input().getX(), config().getTrainBatchSize(), n2v_perc_pix, patch_shape, config().getNeighborhoodRadius(), N2VDataWrapper::uniform_withCP);
 	}
 
 	private List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> makeValidationData(double n2v_perc_pix) {
@@ -352,8 +355,8 @@ public class N2VTraining {
 		}
 		Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
 		N2VDataWrapper<FloatType> valData = new N2VDataWrapper<>(input().getValidationX(),
-				Math.min(input().getTrainBatchSize(), input().getValidationX().size()),
-				n2v_perc_pix, val_patch_shape, input().getNeighborhoodRadius(),
+				Math.min(config().getTrainBatchSize(), input().getValidationX().size()),
+				n2v_perc_pix, val_patch_shape, config().getNeighborhoodRadius(),
 				N2VDataWrapper::uniform_withCP);
 
 		List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validationDataList = new ArrayList<>();
@@ -410,14 +413,14 @@ public class N2VTraining {
 	}
 
 	private int[] getMapping() {
-		if(input().getTrainDimensions() == 2) return new int[]{ 1, 2, 0, 3 };
-		if(input().getTrainDimensions() == 3) return new int[]{ 1, 2, 3, 0, 4 };
+		if(config().getTrainDimensions() == 2) return new int[]{ 1, 2, 0, 3 };
+		if(config().getTrainDimensions() == 3) return new int[]{ 1, 2, 3, 0, 4 };
 		return new int[0];
 	}
 
 	private boolean batchNumSufficient(int n_train) {
-		if(input().getTrainBatchSize() > n_train) {
-			String errorMsg = "Not enough training data (" + n_train + " batches). At least " + input().getTrainBatchSize() + " batches needed.";
+		if(config().getTrainBatchSize() > n_train) {
+			String errorMsg = "Not enough training data (" + n_train + " batches). At least " + config().getTrainBatchSize() + " batches needed.";
 			logService.error(errorMsg);
 			stopTraining = true;
 			dispose();
@@ -428,7 +431,7 @@ public class N2VTraining {
 	}
 
 	private Tensor<Float> makeWeightsTensor() {
-		float[] weightsdata = new float[inputHandler.getTrainBatchSize()];
+		float[] weightsdata = new float[config().getTrainBatchSize()];
 		Arrays.fill(weightsdata, 1);
 		return Tensors.create(weightsdata);
 	}
@@ -511,7 +514,7 @@ public class N2VTraining {
 
 	private void loadUntrainedGraph(Graph graph ) throws IOException {
 		logService.info( "Import graph.." );
-		String graphName = input().getTrainDimensions() == 2 ? "graph_2d.pb" : "graph_3d.pb";
+		String graphName = config().getTrainDimensions() == 2 ? "graph_2d.pb" : "graph_3d.pb";
 		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
 		graph.importGraphDef( graphDef );
 //		graph.operations().forEachRemaining( op -> {
@@ -550,6 +553,10 @@ public class N2VTraining {
 
 	public N2VProgress getDialog() {
 		return dialog;
+	}
+
+	public N2VConfig config() {
+		return config;
 	}
 
 	public InputHandler input() {
@@ -615,11 +622,11 @@ public class N2VTraining {
 			RandomAccessibleInterval training = ij.op().copy().rai( _inputConverted );
 
 			N2VTraining n2v = new N2VTraining(ij.context());
-			n2v.input().setNumEpochs(5);
-			n2v.input().setStepsPerEpoch(5);
-			n2v.input().setBatchSize(128);
-			n2v.input().setPatchDimLength(64);
-			n2v.init();
+			n2v.init(new N2VConfig()
+					.setNumEpochs(5)
+					.setStepsPerEpoch(5)
+					.setBatchSize(128)
+					.setPatchDimLength(64));
 			n2v.input().addTrainingAndValidationData(training, 0.1);
 			n2v.train();
 		} else
