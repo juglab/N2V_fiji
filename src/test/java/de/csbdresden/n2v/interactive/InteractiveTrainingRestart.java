@@ -39,15 +39,15 @@ public class InteractiveTrainingRestart {
 			ij.ui().show("stack", stack);
 
 			N2VTraining n2v = new N2VTraining(ij.context());
-			n2v.setTrainDimensions(2);
-			n2v.setNumEpochs(10);
-			n2v.setStepsPerEpoch(10);
-			n2v.setBatchSize((int) batchSize);
-			n2v.setBatchDimLength(32);
-			n2v.setPatchDimLength(16);
+			n2v.input().setTrainDimensions(2);
+			n2v.input().setNumEpochs(10);
+			n2v.input().setStepsPerEpoch(10);
+			n2v.input().setBatchSize((int) batchSize);
+			n2v.input().setBatchDimLength(32);
+			n2v.input().setPatchDimLength(16);
 			n2v.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-model3853066279801947474.zip");
-			n2v.addTrainingData(stack);
-			n2v.addValidationData(stack);
+			n2v.input().addTrainingData(stack);
+			n2v.input().addValidationData(stack);
 			n2v.train();
 		}
 	}

@@ -62,21 +62,21 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	@Override
 	public void run() {
 		N2VTraining n2v = new N2VTraining(context);
-		n2v.setTrainDimensions(mode3D ? 3 : 2);
-		n2v.setNumEpochs(numEpochs);
-		n2v.setStepsPerEpoch(numStepsPerEpoch);
-		n2v.setBatchSize(batchSize);
-		n2v.setBatchDimLength(batchDimLength);
-		n2v.setPatchDimLength(patchDimLength);
-		n2v.setNeighborhoodRadius(neighborhoodRadius);
+		n2v.input().setTrainDimensions(mode3D ? 3 : 2);
+		n2v.input().setNumEpochs(numEpochs);
+		n2v.input().setStepsPerEpoch(numStepsPerEpoch);
+		n2v.input().setBatchSize(batchSize);
+		n2v.input().setBatchDimLength(batchDimLength);
+		n2v.input().setPatchDimLength(patchDimLength);
+		n2v.input().setNeighborhoodRadius(neighborhoodRadius);
 		n2v.init();
 		try {
 			if(training.equals(validation)) {
 				System.out.println("Using 10% of training data for validation");
-				n2v.addTrainingAndValidationData(training, 0.1);
+				n2v.input().addTrainingAndValidationData(training, 0.1);
 			} else {
-				n2v.addTrainingData(training);
-				n2v.addValidationData(validation);
+				n2v.input().addTrainingData(training);
+				n2v.input().addValidationData(validation);
 			}
 			n2v.train();
 		}

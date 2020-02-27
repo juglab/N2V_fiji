@@ -54,16 +54,16 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		predictionData.clear();
 
 		N2VTraining training = new N2VTraining(ij.context());
-		training.setTrainDimensions(2);
-		training.setNumEpochs(200);
-		training.setStepsPerEpoch(400);
-		training.setBatchSize(64);
-		training.setBatchDimLength(180);
-		training.setPatchDimLength(60);
-		training.setNeighborhoodRadius(2);
+		training.input().setTrainDimensions(2);
+		training.input().setNumEpochs(200);
+		training.input().setStepsPerEpoch(400);
+		training.input().setBatchSize(64);
+		training.input().setBatchDimLength(180);
+		training.input().setPatchDimLength(60);
+		training.input().setNeighborhoodRadius(2);
 		training.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-on-random.zip");
-		training.addTrainingData(trainImg);
-		training.addValidationData(validateImg);
+		training.input().addTrainingData(trainImg);
+		training.input().addValidationData(validateImg);
 		training.addCallbackOnEpochDone(this::calculatePSNR);
 
 		training.train();
