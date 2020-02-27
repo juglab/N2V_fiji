@@ -1,8 +1,8 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.N2VConfig;
-import de.csbdresden.n2v.N2VPrediction;
-import de.csbdresden.n2v.N2VTraining;
+import de.csbdresden.n2v.train.N2VConfig;
+import de.csbdresden.n2v.predict.N2VPrediction;
+import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imglib2.FinalInterval;

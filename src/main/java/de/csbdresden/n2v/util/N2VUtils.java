@@ -1,4 +1,4 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.util;
 
 import net.imagej.ops.OpService;
 import net.imglib2.Cursor;
@@ -48,7 +48,7 @@ public class N2VUtils {
 		opService.math().add( input, Views.iterable(input), mean );
 	}
 
-	static File saveTrainedModel(File checkpointDir) throws IOException {
+	public static File saveTrainedModel(File checkpointDir) throws IOException {
 		Path out = Files.createTempFile("n2v-trained-model", ".zip");
 		FileOutputStream fos = new FileOutputStream(out.toFile());
 		ZipOutputStream zipOut = new ZipOutputStream(fos);

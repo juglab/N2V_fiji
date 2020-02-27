@@ -1,5 +1,7 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
+import de.csbdresden.n2v.train.N2VConfig;
+import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.ImageJ;
 import net.imglib2.FinalDimensions;
 import net.imglib2.img.Img;

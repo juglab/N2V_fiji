@@ -1,6 +1,7 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.predict;
 
 import de.csbdresden.csbdeep.commands.GenericNetwork;
+import de.csbdresden.n2v.util.N2VUtils;
 import net.imagej.Dataset;
 import net.imagej.DefaultDataset;
 import net.imagej.ImgPlus;

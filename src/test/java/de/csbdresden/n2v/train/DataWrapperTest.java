@@ -1,4 +1,4 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
 import net.imagej.ImageJ;
 import net.imglib2.FinalInterval;

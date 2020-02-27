@@ -1,6 +1,6 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.N2VPrediction;
+import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.ImageJ;
 import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;

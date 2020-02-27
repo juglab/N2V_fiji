@@ -1,4 +1,4 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.util;
 
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccess;

@@ -1,5 +1,6 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
+import de.csbdresden.n2v.train.N2VDataGenerator;
 import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;

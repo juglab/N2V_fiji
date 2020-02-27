@@ -25,7 +25,7 @@ import javax.swing.text.SimpleAttributeSet;
 import org.scijava.app.StatusService;
 import org.scijava.thread.ThreadService;
 
-import de.csbdresden.n2v.N2VTraining;
+import de.csbdresden.n2v.train.N2VTraining;
 
 public class N2VProgress extends JPanel {
 

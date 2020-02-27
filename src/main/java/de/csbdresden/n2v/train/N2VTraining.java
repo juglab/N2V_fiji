@@ -1,6 +1,7 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
 import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
+import de.csbdresden.n2v.util.N2VUtils;
 import de.csbdresden.n2v.ui.N2VProgress;
 import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
@@ -9,11 +10,7 @@ import net.imagej.tensorflow.TensorFlowService;
 import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.converter.Converters;
-import net.imglib2.converter.RealFloatConverter;
-import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;

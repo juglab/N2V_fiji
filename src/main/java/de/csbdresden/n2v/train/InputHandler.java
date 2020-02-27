@@ -1,4 +1,4 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
 import de.csbdresden.n2v.ui.N2VProgress;
 import io.scif.services.DatasetIOService;

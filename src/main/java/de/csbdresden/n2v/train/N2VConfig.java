@@ -1,4 +1,4 @@
-package de.csbdresden.n2v;
+package de.csbdresden.n2v.train;
 
 public class N2VConfig {
 	private int numEpochs = 300;

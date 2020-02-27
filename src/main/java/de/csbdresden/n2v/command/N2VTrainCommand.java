@@ -1,7 +1,7 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.N2VConfig;
-import de.csbdresden.n2v.N2VTraining;
+import de.csbdresden.n2v.train.N2VConfig;
+import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
