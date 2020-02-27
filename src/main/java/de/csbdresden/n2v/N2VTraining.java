@@ -76,6 +76,9 @@ public class N2VTraining {
 	@Parameter
 	private StatusService statusService;
 
+	@Parameter
+	Context context;
+
 	private static final String tensorXOpName = "input";
 	private static final String tensorYOpName = "activation_11_target";
 	private static final String trainingTargetOpName = "training/group_deps";
@@ -98,6 +101,7 @@ public class N2VTraining {
 	private File bestModelDir;
 
 	private N2VProgress dialog;
+	private PreviewHandler previewHandler;
 
 	private final List< RandomAccessibleInterval< FloatType > > X = new ArrayList<>();
 	private final List< RandomAccessibleInterval< FloatType > > validationX = new ArrayList<>();
@@ -119,8 +123,6 @@ public class N2VTraining {
 	private float bestValidationLoss = Float.MAX_VALUE;
 
 	private boolean stopTraining = false;
-	private RandomAccessibleInterval<FloatType> splitImage;
-	private List<RandomAccessibleInterval<FloatType>> historyImages;
 	private boolean noCheckpointSaved = true;
 
 	private List<TrainingCallback> onEpochDoneCallbacks = new ArrayList<>();
@@ -280,8 +282,10 @@ public class N2VTraining {
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
 			remainingTimeEstimator.setNumSteps(numEpochs);
 
+
 			if(!headless()) {
-				updateSplitImage(validation_data.get(0).getFirst(), validation_data.get(0).getFirst());
+				previewHandler = new PreviewHandler(context, trainDimensions);
+				previewHandler.update(validation_data.get(0).getFirst(), validation_data.get(0).getFirst());
 			}
 
 			for (int i = 0; i < numEpochs; i++) {
@@ -522,7 +526,7 @@ public class N2VTraining {
 			if(!headless() && i == 0) {
 				Tensor outputTensor = fetchedTensors.get(3);
 				RandomAccessibleInterval<FloatType> output = DatasetTensorFlowConverter.tensorToDataset(outputTensor, new FloatType(), getMapping(), false);
-				updateSplitImage(item.getFirst(), output);
+				previewHandler.update(item.getFirst(), output);
 //			updateHistoryImage(output);
 			}
 			fetchedTensors.forEach(Tensor::close);
@@ -538,76 +542,9 @@ public class N2VTraining {
 		return avgLoss;
 	}
 
-	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
-		if (Thread.interrupted()) return;
-		if(splitImage == null) splitImage = opService.copy().rai(out);
-		else opService.copy().rai(splitImage, out);
-		if(trainDimensions == 2) updateSplitImage2D(in);
-		if(trainDimensions == 3) updateSplitImage3D(in);
-		Display<?> display = uiService.context().service(DisplayService.class).getDisplay("training preview");
-		if(display == null) uiService.show("training preview", splitImage);
-		else display.update();
-	}
-
-	private void updateSplitImage2D(RandomAccessibleInterval<FloatType> in) {
-		RandomAccess<FloatType> inRA = in.randomAccess();
-		RandomAccess<FloatType> splitRA = splitImage.randomAccess();
-		for (int i = 0; i < in.dimension(0); i++) {
-			for (int j = 0; j < in.dimension(1); j++) {
-				if(i < in.dimension(1)-j) {
-					inRA.setPosition(i, 0);
-					inRA.setPosition(j, 1);
-					for (int k = 0; k < in.dimension(2); k++) {
-						inRA.setPosition(k, 2);
-						splitRA.setPosition(inRA);
-						splitRA.get().set(inRA.get());
-					}
-				}
-			}
-		}
-	}
-
-	private void updateSplitImage3D(RandomAccessibleInterval<FloatType> in) {
-		RandomAccess<FloatType> inRA = in.randomAccess();
-		RandomAccess<FloatType> splitRA = splitImage.randomAccess();
-		for (int i = 0; i < in.dimension(0); i++) {
-			inRA.setPosition(i, 0);
-			for (int j = 0; j < in.dimension(1); j++) {
-				if(i < in.dimension(1)-j) {
-					inRA.setPosition(j, 1);
-					for (int k = 0; k < in.dimension(2); k++) {
-						inRA.setPosition(k, 2);
-						for (int l = 0; l < in.dimension(3); l++) {
-							inRA.setPosition(l, 3);
-							splitRA.setPosition(inRA);
-							splitRA.get().set(inRA.get());
-						}
-					}
-				}
-			}
-		}
-	}
 
 	public void setCurrentLearningRate(float newLR) {
 		currentLearningRate = newLR;
-	}
-
-	private void updateHistoryImage(RandomAccessibleInterval<FloatType> out) {
-		for (int i = 2; i < out.numDimensions(); i++) {
-			out = Views.hyperSlice(out, i, 0);
-		}
-		//TODO copying neccessary?
-		RandomAccessibleInterval<FloatType> outXY = opService.copy().rai(out);
-		if(historyImages == null) historyImages = new ArrayList<>();
-		historyImages.add(0, outXY);
-		Display<?> display = uiService.context().service(DisplayService.class).getDisplay("training history");
-		RandomAccessibleInterval<FloatType> stack = Views.stack(historyImages);
-		if(display == null) uiService.show("training history", stack);
-		else {
-			display.clear();
-			display.display(stack);
-			display.update();
-		}
 	}
 
 	private static void progressPercentage(int step, int stepTotal, float loss, float abs, float mse, float learningRate) {
