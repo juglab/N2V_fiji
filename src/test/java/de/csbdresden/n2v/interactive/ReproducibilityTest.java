@@ -88,12 +88,11 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		ij.log().setLevel(LogLevel.NONE);
 		for (Pair<Img, Img> pair : testData) {
 			Img<T> networkInput = pair.getLeft();
-			RandomAccessibleInterval<T> output = prediction.predict(Views.zeroMin(Views.interval(Views.extendZero(networkInput), Intervals.expand( networkInput, 32 ))));
+			RandomAccessibleInterval<FloatType> output = prediction.predictPadded(ij.op().convert().float32(networkInput));
 //			System.out.println("mean gt   : " + ij.op().stats().mean(pair.getRight()).getRealDouble());
 //			System.out.println("stdDev gt : " + ij.op().stats().stdDev(pair.getRight()));
 //			System.out.println("mean out  : " + ij.op().stats().mean(Views.iterable(output)));
 //			System.out.println("stdDev out: " + ij.op().stats().stdDev(Views.iterable(output)));
-			output = Views.zeroMin(Views.interval(output, Intervals.expand(output, -32)));
 			sumPSNR += calculatePSNR(pair.getRight(), output);
 		}
 		ij.log().setLevel(currentLevel);

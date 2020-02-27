@@ -174,10 +174,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 		N2VPrediction prediction = new N2VPrediction(context);
 		prediction.setModelFile(new File(latestTrainedModelPath));
-		int padding = 32;
-		FinalInterval expand = Intervals.expand(this.prediction, padding);
-		RandomAccessibleInterval output = prediction.predict(Views.zeroMin(Views.interval(Views.extendZero(this.prediction), expand)));
-		this.output = Views.zeroMin(Views.interval(output, Intervals.expand(output, -padding)));
+		this.output = prediction.predictPadded(this.prediction);
 
 		n2v.getDialog().setTaskDone(2);
 

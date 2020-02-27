@@ -50,6 +50,7 @@ public class OutputHandler {
 		data.put("version", pom != null ? pom.getVersion() : "");
 		data.put("mean", mean.get());
 		data.put("stdDev", stdDev.get());
+		data.put("trainDimensions", trainDimensions);
 		Yaml yaml = new Yaml();
 		FileWriter writer = null;
 		try {
