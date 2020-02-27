@@ -1,8 +1,8 @@
 package de.csbdresden.n2v.train;
 
 import de.csbdresden.csbdeep.network.model.tensorflow.DatasetTensorFlowConverter;
-import de.csbdresden.n2v.util.N2VUtils;
 import de.csbdresden.n2v.ui.N2VProgress;
+import de.csbdresden.n2v.util.N2VUtils;
 import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
@@ -12,7 +12,6 @@ import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
-import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.scijava.Context;
 import org.scijava.app.StatusService;
@@ -28,9 +27,7 @@ import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -184,11 +181,13 @@ public class N2VTraining {
 
 			try {
 				if(!continueTraining) {
-					loadUntrainedGraph(graph);
+					logService.info( "Import graph.." );
+					output().loadUntrainedGraph(graph);
 					outputHandler.createSavedModelDirs();
 				}
 				else {
-					File trainedModel = loadTrainedGraph(graph, zipFile);
+					logService.info( "Import trained graph.." );
+					File trainedModel = output().loadTrainedGraph(graph, zipFile);
 					outputHandler.createSavedModelDirsFromExisting(trainedModel);
 				}
 			} catch (IOException e) {
@@ -507,45 +506,6 @@ public class N2VTraining {
 				outputHandler.getCurrentMse(),
 				outputHandler.getCurrentAbs(),
 				outputHandler.getCurrentLearningRate() );
-	}
-
-	private void loadUntrainedGraph(Graph graph ) throws IOException {
-		logService.info( "Import graph.." );
-		String graphName = config().getTrainDimensions() == 2 ? "graph_2d.pb" : "graph_3d.pb";
-		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
-		graph.importGraphDef( graphDef );
-//		graph.operations().forEachRemaining( op -> {
-//			for ( int i = 0; i < op.numOutputs(); i++ ) {
-//				Output< Object > opOutput = op.output( i );
-//				String name = opOutput.op().name();
-//				logService.info( name );
-//			}
-//		} );
-	}
-
-	private File loadTrainedGraph(Graph graph, File zipFile ) throws IOException {
-
-		logService.info( "Import trained graph.." );
-
-		File trainedModel = Files.createTempDirectory("n2v-imported-model").toFile();
-		N2VUtils.unZipAll(zipFile, trainedModel);
-
-		byte[] graphDef = new byte[ 0 ];
-		try {
-			graphDef = IOUtils.toByteArray( new FileInputStream(new File(trainedModel, "training_graph.pb")));
-		} catch ( IOException e ) {
-			e.printStackTrace();
-		}
-		graph.importGraphDef( graphDef );
-
-//		graph.operations().forEachRemaining( op -> {
-//			for ( int i = 0; i < op.numOutputs(); i++ ) {
-//				Output< Object > opOutput = op.output( i );
-//				String name = opOutput.op().name();
-//				logService.info( name );
-//			}
-//		} );
-		return trainedModel;
 	}
 
 	public N2VProgress getDialog() {

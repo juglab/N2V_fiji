@@ -5,6 +5,7 @@ import net.imglib2.type.numeric.real.FloatType;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
 import org.scijava.util.POM;
+import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
@@ -106,6 +107,43 @@ public class OutputHandler {
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "saved_model.pb"), predictionGraphDef);
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "training_graph.pb"), predictionGraphDef);
 	}
+
+	void loadUntrainedGraph(Graph graph) throws IOException {
+		String graphName = trainDimensions == 2 ? "graph_2d.pb" : "graph_3d.pb";
+		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
+		graph.importGraphDef( graphDef );
+//		graph.operations().forEachRemaining( op -> {
+//			for ( int i = 0; i < op.numOutputs(); i++ ) {
+//				Output< Object > opOutput = op.output( i );
+//				String name = opOutput.op().name();
+//				logService.info( name );
+//			}
+//		} );
+	}
+
+	File loadTrainedGraph(Graph graph, File zipFile) throws IOException {
+
+		File trainedModel = Files.createTempDirectory("n2v-imported-model").toFile();
+		N2VUtils.unZipAll(zipFile, trainedModel);
+
+		byte[] graphDef = new byte[ 0 ];
+		try {
+			graphDef = IOUtils.toByteArray( new FileInputStream(new File(trainedModel, "training_graph.pb")));
+		} catch ( IOException e ) {
+			e.printStackTrace();
+		}
+		graph.importGraphDef( graphDef );
+
+//		graph.operations().forEachRemaining( op -> {
+//			for ( int i = 0; i < op.numOutputs(); i++ ) {
+//				Output< Object > opOutput = op.output( i );
+//				String name = opOutput.op().name();
+//				logService.info( name );
+//			}
+//		} );
+		return trainedModel;
+	}
+
 
 	public void initTensors(Session sess) {
 		if (checkpointExists) {
