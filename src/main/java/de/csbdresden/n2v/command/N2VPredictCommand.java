@@ -1,8 +1,12 @@
 package de.csbdresden.n2v.command;
 
+import de.csbdresden.csbdeep.converter.FloatRealConverter;
 import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converters;
+import net.imglib2.converter.RealFloatConverter;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.Context;
@@ -15,13 +19,13 @@ import org.scijava.plugin.Plugin;
 import java.io.File;
 
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>predict" )
-public class N2VPredictCommand implements Command {
+public class N2VPredictCommand <T extends RealType<T>> implements Command {
 
 	@Parameter
-	private RandomAccessibleInterval< FloatType > prediction;
+	private RandomAccessibleInterval< T > input;
 
 	@Parameter( type = ItemIO.OUTPUT )
-	private RandomAccessibleInterval< FloatType > output;
+	private RandomAccessibleInterval< T > output;
 
 	@Parameter
 	private File modelFile;
@@ -53,7 +57,9 @@ public class N2VPredictCommand implements Command {
 		N2VPrediction prediction = new N2VPrediction(context);
 		prediction.setModelFile(modelFile);
 		prediction.setShowDialog(true);
-		output = prediction.predictPadded(this.prediction);
+		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
+		RandomAccessibleInterval<FloatType> _output = prediction.predictPadded(converted);
+		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
 //		output = datasetService.create(_output);
 //		output.initializeColorTables(colorTables.size());
 //		for (int i = 0; i < colorTables.size(); i++) {
