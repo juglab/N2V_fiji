@@ -204,7 +204,7 @@ public class N2VTraining {
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
-			outputHandler.writeModelConfigFile();
+			outputHandler.writeModelConfigFile(config);
 
 			if (Thread.interrupted()) return;
 			logService.info("Augment tiles..");

@@ -1,6 +1,7 @@
 package de.csbdresden.n2v.predict;
 
 import de.csbdresden.csbdeep.commands.GenericNetwork;
+import de.csbdresden.n2v.train.ModelSpecification;
 import de.csbdresden.n2v.util.N2VUtils;
 import net.imagej.Dataset;
 import net.imagej.DefaultDataset;
@@ -17,15 +18,9 @@ import org.scijava.Context;
 import org.scijava.command.CommandModule;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.zip.ZipFile;
 
 public class N2VPrediction {
 
@@ -50,35 +45,7 @@ public class N2VPrediction {
 
 	public void setModelFile(File zippedModel) {
 		this.zippedModel = zippedModel;
-		readConfig();
-	}
-
-	private void readConfig() {
-		double mean = 0.0f;
-		double stdDev = 1.0f;
-		int trainDimensions = 2;
-		try {
-			InputStream stream = extractFile(zippedModel, "config.yaml");
-			Yaml yaml = new Yaml();
-			Map<String, Object> obj = yaml.load(stream);
-			System.out.println(obj);
-			Object meanObj = obj.get("mean");
-			if(meanObj != null) mean = (double) meanObj;
-			Object stdDevObj = obj.get("stdDev");
-			if(stdDevObj != null) stdDev = (double) stdDevObj;
-			Object trainDimensionsObj = obj.get("trainDimensions");
-			if(trainDimensionsObj != null) trainDimensions = (int) trainDimensionsObj;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		setMean(new FloatType((float) mean));
-		setStdDev(new FloatType((float) stdDev));
-		setTrainDimensions(trainDimensions);
-	}
-
-	public InputStream extractFile(File zipFile, String fileName) throws IOException {
-		ZipFile zf = new ZipFile(zipFile);
-		return zf.getInputStream(zf.getEntry(fileName));
+		ModelSpecification.readConfig(this, zippedModel);
 	}
 
 	public void setMean(FloatType mean) {
@@ -98,7 +65,7 @@ public class N2VPrediction {
 	}
 
 	public RandomAccessibleInterval predict(RandomAccessibleInterval input) {
-		Img prediction = (Img) N2VUtils.normalize(input, mean, stdDev, opService);
+		Img prediction = preprocess(input, mean, stdDev);
 		Dataset inputDataset = new DefaultDataset(context, new ImgPlus(prediction));
 		try {
 			final CommandModule module = commandService.run(
@@ -113,12 +80,20 @@ public class N2VPrediction {
 			if(module.isCanceled()) return null;
 			RandomAccessibleInterval<FloatType> output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
 			if(output == null) return null;
-			N2VUtils.denormalizeInplace(output, mean, stdDev, opService);
+			postprocess(output, mean, stdDev);
 			return output;
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	private void postprocess(RandomAccessibleInterval<FloatType> output, FloatType mean, FloatType stdDev) {
+		N2VUtils.denormalizeInplace(output, mean, stdDev, opService);
+	}
+
+	public Img preprocess(RandomAccessibleInterval input, FloatType mean, FloatType stdDev) {
+		return (Img) N2VUtils.normalize(input, mean, stdDev, opService);
 	}
 
 	public RandomAccessibleInterval<FloatType> predictPadded(RandomAccessibleInterval<FloatType> input) {

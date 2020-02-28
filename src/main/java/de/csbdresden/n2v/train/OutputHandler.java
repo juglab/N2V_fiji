@@ -4,21 +4,16 @@ import de.csbdresden.n2v.util.N2VUtils;
 import net.imglib2.type.numeric.real.FloatType;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
-import org.scijava.util.POM;
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 
 public class OutputHandler {
 	private FloatType mean = new FloatType();
@@ -43,24 +38,6 @@ public class OutputHandler {
 		this.trainDimensions = trainDimensions;
 	}
 
-	void writeModelConfigFile() {
-		Map<String, Object> data = new HashMap<>();
-		data.put("name", "N2V");
-		POM pom = POM.getPOM(N2VTraining.class);
-		data.put("version", pom != null ? pom.getVersion() : "");
-		data.put("mean", mean.get());
-		data.put("stdDev", stdDev.get());
-		data.put("trainDimensions", trainDimensions);
-		Yaml yaml = new Yaml();
-		FileWriter writer = null;
-		try {
-			writer = new FileWriter(new File(mostRecentModelDir, "config.yaml"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		yaml.dump(data, writer);
-	}
-
 	public File exportLatestTrainedModel() throws IOException {
 		if(noCheckpointSaved) return null;
 		return N2VUtils.saveTrainedModel(mostRecentModelDir);
@@ -80,6 +57,10 @@ public class OutputHandler {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public void writeModelConfigFile(N2VConfig config) {
+		ModelSpecification.writeModelConfigFile(config, this, mostRecentModelDir);
 	}
 
 	void createSavedModelDirs() throws IOException {
