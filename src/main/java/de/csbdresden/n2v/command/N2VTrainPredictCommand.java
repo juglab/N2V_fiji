@@ -142,6 +142,8 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 				.setPatchDimLength(batchDimLength)
 				.setPatchDimLength(patchDimLength)
 				.setNeighborhoodRadius(neighborhoodRadius));
+		n2v.getDialog().addTask( "Prediction" );
+
 		try {
 			if(training.equals(prediction)) {
 				System.out.println("Using 10% of training data for validation");

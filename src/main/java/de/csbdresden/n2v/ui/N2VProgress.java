@@ -173,7 +173,7 @@ public class N2VProgress extends JPanel {
 	}
 
 	public void setTaskDone( final int task ) {
-		if(task == 2) {
+		if(task == tasks.size()-1) {
 			cancelBtn.setEnabled(false);
 			finishBtn.setText("Close");
 		}

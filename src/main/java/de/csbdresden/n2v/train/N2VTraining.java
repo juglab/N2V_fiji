@@ -125,7 +125,6 @@ public class N2VTraining {
 			inputHandler.setDialog(dialog);
 			dialog.addTask( "Preparation" );
 			dialog.addTask( "Training" );
-			dialog.addTask( "Prediction" );
 			dialog.display();
 			dialog.setTaskStart( 0 );
 			dialog.setCurrentTaskMessage( "Loading TensorFlow" );
@@ -304,6 +303,7 @@ public class N2VTraining {
 //			sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 
 			if ( !headless() ) dialog.setTaskDone( 1 );
+			stopTraining = true;
 			logService.info( "Training done." );
 
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
