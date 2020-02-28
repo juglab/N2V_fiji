@@ -45,7 +45,7 @@ public class InteractiveTraining {
 					.setNumEpochs(10)
 					.setStepsPerEpoch(10)
 					.setBatchSize((int)batchSize)
-					.setPatchDimLength(32)
+					.setBatchDimLength(32)
 					.setPatchDimLength(16));
 			n2v.input().addTrainingData(stack);
 			n2v.input().addValidationData(stack);

@@ -68,7 +68,7 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 				.setNumEpochs(numEpochs)
 				.setStepsPerEpoch(numStepsPerEpoch)
 				.setBatchSize(batchSize)
-				.setPatchDimLength(batchDimLength)
+				.setBatchDimLength(batchDimLength)
 				.setPatchDimLength(patchDimLength)
 				.setNeighborhoodRadius(neighborhoodRadius));
 		try {

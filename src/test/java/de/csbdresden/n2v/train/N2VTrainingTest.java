@@ -32,7 +32,7 @@ public class N2VTrainingTest {
 					.setNumEpochs(2)
 					.setStepsPerEpoch(2)
 					.setBatchSize((int)batchSize)
-					.setPatchDimLength(32)
+					.setBatchDimLength(32)
 					.setPatchDimLength(32));
 			n2v.input().addTrainingData(trainingBatches);
 			n2v.input().addValidationData(validationBatches);
@@ -60,7 +60,7 @@ public class N2VTrainingTest {
 				.setNumEpochs(1)
 				.setStepsPerEpoch(2)
 				.setBatchSize((int)batchSize)
-				.setPatchDimLength(32)
+				.setBatchDimLength(32)
 				.setPatchDimLength(16));
 		n2v.input().addTrainingData(trainingBatches);
 		n2v.input().addValidationData(validationBatches);

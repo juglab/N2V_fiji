@@ -139,7 +139,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 				.setNumEpochs(numEpochs)
 				.setStepsPerEpoch(numStepsPerEpoch)
 				.setBatchSize(batchSize)
-				.setPatchDimLength(batchDimLength)
+				.setBatchDimLength(batchDimLength)
 				.setPatchDimLength(patchDimLength)
 				.setNeighborhoodRadius(neighborhoodRadius));
 		n2v.getDialog().addTask( "Prediction" );
