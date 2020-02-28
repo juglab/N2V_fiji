@@ -72,7 +72,7 @@
 
 	<scm>
 		<connection>scm:git:git://github.com/juglab/N2V_fiji</connection>
-		<developerConnection>scm:git:git@github.com/juglab/N2V_fiji</developerConnection>
+		<developerConnection>scm:git:git@github.com:juglab/N2V_fiji</developerConnection>
 		<tag>HEAD</tag>
 		<url>https://github.com/juglab/N2V_fiji</url>
 	</scm>
