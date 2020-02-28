@@ -1,3 +1,5 @@
+[![](https://travis-ci.com/juglab/N2V_fiji.svg?branch=master)](https://travis-ci.com/juglab/N2V_fiji)
+
 # N2V training in Fiji
 Noise reduction (pixel wise independent) by training a CNN on single noisy images in Java.  
 
