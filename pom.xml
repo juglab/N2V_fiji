@@ -84,6 +84,9 @@
 		<tensorflow.version>1.13.1</tensorflow.version>
 		<imagej-tensorflow.version>1.1.4</imagej-tensorflow.version>
 
+
+		<!-- NB: Deploy releases to the SciJava Maven repository. -->
+		<releaseProfiles>deploy-to-scijava</releaseProfiles>
 	</properties>
 
 	<repositories>
