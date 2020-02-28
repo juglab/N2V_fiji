@@ -61,18 +61,18 @@
 	</mailingLists>
 
 	<scm>
-		<connection>scm:git:git://github.com/CSBDeep/CSBDeep-simple-plugin</connection>
-		<developerConnection>scm:git:git@github.com/CSBDeep/CSBDeep-simple-plugin</developerConnection>
+		<connection>scm:git:git://github.com/juglab/N2V_fiji</connection>
+		<developerConnection>scm:git:git@github.com/juglab/N2V_fiji</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/CSBDeep/CSBDeep_fiji</url>
+		<url>https://github.com/juglab/N2V_fiji</url>
 	</scm>
 	<issueManagement>
 		<system>GitHub Issues</system>
-		<url>https://github.com/imagej/CSBDeep/CSBDeep_fiji/issues</url>
+		<url>https://github.com/imagej/juglab/N2V_fiji/issues</url>
 	</issueManagement>
 	<ciManagement>
 		<system>Travis CI</system>
-		<url>https://travis-ci.com/CSBDeep/CSBDeep_fiji</url>
+		<url>https://travis-ci.com/juglab/N2V_fiji</url>
 	</ciManagement>
 
 	<properties>
