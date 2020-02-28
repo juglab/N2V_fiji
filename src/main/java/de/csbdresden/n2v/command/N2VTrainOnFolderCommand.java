@@ -22,7 +22,7 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	@Parameter(label = "Folder containing images used for training", style = DIRECTORY_STYLE)
 	private File training;
 
-	@Parameter(label = "Folder containing images used for validation (can be the same as the training folder)")
+	@Parameter(label = "Folder containing images used for validation", style = DIRECTORY_STYLE)
 	private File validation;
 
 	@Parameter(label = "Use 3D model instead of 2D")
@@ -117,7 +117,7 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 		final ImageJ ij = new ImageJ();
 		ij.launch( args );
 
-		final File trainingFolderFile = new File( "/home/random/Development/imagej/project/3DAnalysisFIBSegmentation/owncloud/screenshots/" );
+		final File trainingFolderFile = new File( "/home/random/Development/python/n2v/examples/2D/denoising2D_SEM/data/test/" );
 
 		ij.command().run( N2VTrainOnFolderCommand.class, true,"training", trainingFolderFile, "validation", trainingFolderFile).get();
 
