@@ -25,7 +25,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 	private RandomAccessibleInterval< T > input;
 
 	@Parameter( type = ItemIO.OUTPUT )
-	private RandomAccessibleInterval< T > output;
+	private RandomAccessibleInterval< FloatType > output;
 
 	@Parameter
 	private File modelFile;
@@ -58,8 +58,8 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 		prediction.setModelFile(modelFile);
 		prediction.setShowDialog(true);
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
-		RandomAccessibleInterval<FloatType> _output = prediction.predictPadded(converted);
-		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
+		output = prediction.predictPadded(converted);
+//		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
 //		output = datasetService.create(_output);
 //		output.initializeColorTables(colorTables.size());
 //		for (int i = 0; i < colorTables.size(); i++) {
