@@ -46,6 +46,18 @@
 				<role>maintainer</role>
 			</roles>
 		</developer>
+		<developer>
+			<id>turek</id>
+			<name>Gabriella Turek</name>
+			<email>turek@@mpi-cbg.de</email>
+			<url>https://wwww.mpi-cbg.de/jug</url>
+			<organization>CSBD</organization>
+			<organizationUrl>http://www.mpi-cbg.de/jug</organizationUrl>
+			<roles>
+				<role>developer</role>
+			</roles>
+			<timezone>+1</timezone>
+		</developer>
 	</developers>
 	<contributors>
 		<contributor>
