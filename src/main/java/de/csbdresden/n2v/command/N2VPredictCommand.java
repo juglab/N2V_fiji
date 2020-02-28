@@ -29,12 +29,36 @@ public class N2VPredictCommand implements Command {
 	@Parameter
 	private Context context;
 
+//	@Parameter
+//	private DisplayService displayService;
+//
+//	@Parameter
+//	private DatasetService datasetService;
+//
+//	@Parameter
+//	private ImageDisplayService imageDisplayService;
+
 	@Override
 	public void run() {
+		//TODO make transferring LUTs work..
+		//TODO the following code works for IJ2, but not for LUTs set via IJ1
+//		List<Display<?>> displays = displayService.getDisplays(prediction);
+//		List<ColorTable> colorTables = new ArrayList<>();
+//		if(displays.size() > 0) {
+//			ImageDisplay display = (ImageDisplay) displays.get(0);
+//			display.update();
+//			DatasetView view = imageDisplayService.getActiveDatasetView(display);
+//			colorTables = view.getColorTables();
+//		}
 		N2VPrediction prediction = new N2VPrediction(context);
 		prediction.setModelFile(modelFile);
 		prediction.setShowDialog(true);
 		output = prediction.predictPadded(this.prediction);
+//		output = datasetService.create(_output);
+//		output.initializeColorTables(colorTables.size());
+//		for (int i = 0; i < colorTables.size(); i++) {
+//			output.setColorTable(colorTables.get(i), i);
+//		}
 	}
 
 	public static void main( final String... args ) throws Exception {
