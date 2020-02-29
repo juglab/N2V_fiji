@@ -11,7 +11,7 @@ Noise reduction (pixel wise independent) by training a CNN on single noisy image
 ## Plugin details 
 - **`train`**: will take an image for training and an image for validation. If you choose the same image for both, 10% of the image will be used for validation, 90% for training. The plugin returns a window displaying the path to the zipped trained model from the last step and the zipped trained model with the lowest validation loss
 - **`predict`**: takes a zipped trained model and an image; basically normalizes, calls CSBDeep, denormalizes
-- **`train + predict`**: one-lick solution for content aware denoising. Takes a training and a prediction image, if they are the same, 10% of the image will not be used for training, but for validation. Otherwise the prediction image is used for validation.
+- **`train + predict`**: one-click solution for content aware denoising. Takes a training and a prediction image, if they are the same, 10% of the image will not be used for training, but for validation. Otherwise the prediction image is used for validation.
 
 ## Credits
 N2V for Fiji is written by Deborah Schmidt and Gabriella Turek.
