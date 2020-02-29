@@ -170,6 +170,8 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 			e.printStackTrace();
 		}
 
+		if(isCanceled()) return;
+
 		n2v.getDialog().setTaskStart(2);
 
 		if(latestTrainedModelPath == null) return;

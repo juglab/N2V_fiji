@@ -171,7 +171,7 @@ public class N2VTraining {
 
 		logService.info( "Create session.." );
 		if ( !headless() ) dialog.setCurrentTaskMessage( "Creating session" );
-		if (Thread.interrupted()) return;
+		if (Thread.interrupted() || isCanceled()) return;
 
 		try (Graph graph = new Graph();
 		     Session sess = new Session( graph )) {
@@ -193,27 +193,27 @@ public class N2VTraining {
 				e.printStackTrace();
 			}
 
-			if (Thread.interrupted()) return;
+			if (Thread.interrupted() || isCanceled()) return;
 			Operation opTrain = graph.operation( trainingTargetOpName );
 			if ( opTrain == null ) throw new RuntimeException( "Training op not found" );
 
 			output().initTensors(sess);
 
-			if (Thread.interrupted()) return;
+			if (Thread.interrupted() || isCanceled()) return;
 			logService.info("Normalizing..");
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
 			outputHandler.writeModelConfigFile(config);
 
-			if (Thread.interrupted()) return;
+			if (Thread.interrupted() || isCanceled()) return;
 			logService.info("Augment tiles..");
 			if(!headless()) dialog.setCurrentTaskMessage("Augment tiles ...");
 
 			N2VDataGenerator.augment(input().getX());
 			N2VDataGenerator.augment(input().getValidationX());
 
-			if (Thread.interrupted()) return;
+			if (Thread.interrupted() || isCanceled()) return;
 			logService.info("Prepare training batches...");
 			if(!headless()) dialog.setCurrentTaskMessage("Prepare training batches...");
 
@@ -237,7 +237,10 @@ public class N2VTraining {
 //			List<RandomAccessibleInterval<FloatType>> targets = new ArrayList<>();
 			Tensor<Float> tensorWeights = makeWeightsTensor();
 
-			if (Thread.interrupted()) return;
+			if (Thread.interrupted() || isCanceled()) {
+				tensorWeights.close();
+				return;
+			}
 			logService.info("Start training..");
 			if(!headless()) {
 				dialog.setCurrentTaskMessage("Starting training ...");
@@ -263,7 +266,7 @@ public class N2VTraining {
 
 				for (int j = 0; j < config().getStepsPerEpoch() && !stopTraining; j++) {
 
-					if (Thread.interrupted()) {
+					if (Thread.interrupted() || isCanceled()) {
 						tensorWeights.close();
 						return;
 					}
@@ -289,10 +292,17 @@ public class N2VTraining {
 
 				}
 
-				if (Thread.interrupted()) return;
+				if (Thread.interrupted() || isCanceled()) {
+					tensorWeights.close();
+					return;
+				}
 				training_data.on_epoch_end();
 				outputHandler.saveCheckpoint(sess);
 				float validationLoss = validate(sess, validation_data, tensorWeights);
+				if (Thread.interrupted() || isCanceled()) {
+					tensorWeights.close();
+					return;
+				}
 				outputHandler.setCurrentValidationLoss(validationLoss);
 				if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
 				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
@@ -441,6 +451,10 @@ public class N2VTraining {
 		long validationBatches = validationData.size();
 		for (int i = 0; i < validationBatches; i++) {
 
+			if (Thread.interrupted() || isCanceled()) {
+				break;
+			}
+
 			Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>> item = validationData.get(i);
 
 			Tensor tensorX = DatasetTensorFlowConverter.datasetToTensor(item.getFirst(), getMapping());
@@ -547,7 +561,7 @@ public class N2VTraining {
 			future.cancel(true);
 		}
 		if(pool != null) {
-			pool.shutdownNow();
+			pool.shutdown();
 		}
 	}
 
