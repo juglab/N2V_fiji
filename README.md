@@ -23,7 +23,7 @@ export PATH=/usr/local/cuda/bin${PATH};export LD_LIBRARY_PATH=/usr/local/cuda/li
 ```
 
 ### GPU support (Windows)
-To set the CUDA environment variables in Windows, please follow the steps described on [this page](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#install-windows) (section 4.4).
+To set the CUDA environment variables in Windows, please follow the steps described on [this page](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#install-windows) (section 4.3.4).
 
 
 ## Plugin details 
