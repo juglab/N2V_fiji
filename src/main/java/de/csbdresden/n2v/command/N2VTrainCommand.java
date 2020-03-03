@@ -3,6 +3,7 @@ package de.csbdresden.n2v.command;
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.ImageJ;
+import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
@@ -68,6 +69,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Parameter
 	private LogService logService;
 
+	@Parameter
+	private OpService opService;
+
 	private boolean canceled;
 	private ExecutorService pool;
 	private Future<?> future;
@@ -90,6 +94,15 @@ public class N2VTrainCommand implements Command, Cancelable {
 	}
 
 	private void mainThread() {
+
+		if(training.equals(validation)) {
+			validation = opService.convert().float32( Views.iterable( validation ) );
+			training = validation;
+		} else {
+			validation = opService.convert().float32( Views.iterable( validation ) );
+			training = opService.convert().float32( Views.iterable( training ) );
+		}
+
 		N2VTraining n2v = new N2VTraining(context);
 		n2v.init(new N2VConfig()
 				.setTrainDimensions(mode3D ? 3 : 2)
@@ -155,14 +168,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 		final File trainingImgFile = new File( "/home/random/Development/imagej/project/CSBDeep/train.tif" );
 
 		if ( trainingImgFile.exists() ) {
-			RandomAccessibleInterval _input = ( RandomAccessibleInterval ) ij.io().open( trainingImgFile.getAbsolutePath() );
-			RandomAccessibleInterval _inputConverted = ij.op().convert().float32( Views.iterable( _input ) );
-//			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
+			RandomAccessibleInterval input = ( RandomAccessibleInterval ) ij.io().open( trainingImgFile.getAbsolutePath() );
 
-			RandomAccessibleInterval training = ij.op().copy().rai( _inputConverted );
-			RandomAccessibleInterval prediction = training;
-
-			ij.command().run( N2VTrainCommand.class, true,"training", training, "validation", prediction).get();
+			ij.command().run( N2VTrainCommand.class, true,"training", input, "validation", input).get();
 		} else
 			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
 
