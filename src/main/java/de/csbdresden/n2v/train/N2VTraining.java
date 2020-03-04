@@ -93,16 +93,17 @@ public class N2VTraining {
 	private Future<?> future;
 	private Session session;
 	private N2VConfig config;
+	private int stepsFinished = 0;
 
 	public interface TrainingCallback {
 
 		void accept(N2VTraining training);
-	}
 
+	}
 	public interface TrainingCanceledCallback {
+
 		void accept();
 	}
-
 	public N2VTraining(Context context) {
 		context.inject(this);
 	}
@@ -113,6 +114,7 @@ public class N2VTraining {
 		zipFile = new File(trainedModel);
 		init(config);
 	}
+
 	public void init(N2VConfig config) {
 
 		this.config = config;
@@ -146,7 +148,6 @@ public class N2VTraining {
 	private boolean headless() {
 		return uiService.isHeadless();
 	}
-
 	public void train() {
 
 		pool = Executors.newSingleThreadExecutor();
@@ -166,7 +167,7 @@ public class N2VTraining {
 	}
 
 	private void mainThread() {
-		outputHandler = new OutputHandler(config.getTrainDimensions());
+		outputHandler = new OutputHandler(config, this);
 		addCallbackOnEpochDone(outputHandler::copyBestModel);
 
 		logService.info( "Create session.." );
@@ -204,7 +205,6 @@ public class N2VTraining {
 			if(!headless()) dialog.setCurrentTaskMessage("Normalizing ...");
 
 			normalize();
-			outputHandler.writeModelConfigFile(config);
 
 			if (Thread.interrupted() || isCanceled()) return;
 			logService.info("Augment tiles..");
@@ -287,6 +287,8 @@ public class N2VTraining {
 					losses.add((double) outputHandler.getCurrentLoss());
 					logStatusInConsole(j + 1, config().getStepsPerEpoch(), outputHandler);
 					if(!headless()) dialog.updateTrainingProgress(i + 1, j + 1);
+
+					stepsFinished = config().getStepsPerEpoch()*i+j+1;
 
 					index++;
 
@@ -498,6 +500,9 @@ public class N2VTraining {
 		return avgLoss;
 	}
 
+	public int getStepsFinished() {
+		return stepsFinished;
+	}
 
 	public void setLearningRate(float newLR) {
 		outputHandler.setCurrentLearningRate(newLR);

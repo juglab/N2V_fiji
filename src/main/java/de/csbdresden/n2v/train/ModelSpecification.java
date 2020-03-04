@@ -56,6 +56,18 @@ public class ModelSpecification {
 	private final static String idPredictionDependencies = "dependencies";
 	private final static String idMean = "mean";
 	private final static String idStdDev = "stdDev";
+	private final static String idTraining = "training";
+	private final static String idTrainingSource = "source";
+	private final static String idTrainingKwargs = "kwargs";
+	private final static String idTrainingKwargsTrainDimensions = "trainDimensions";
+	private final static String idTrainingKwargsLearningRate = "learningRate";
+	private final static String idTrainingKwargsNumEpochs = "numEpochs";
+	private final static String idTrainingKwargsNumStepsPerEpoch = "numStepsPerEpoch";
+	private final static String idTrainingKwargsBatchSize = "batchSize";
+	private final static String idTrainingKwargsBatchDimLength = "batchDimLength";
+	private final static String idTrainingKwargsPatchDimLength = "patchDimLength";
+	private final static String idTrainingKwargsNeighborhoodRadius = "neighborhoodRadius";
+	private final static String idTrainingKwargsStepsFinished = "stepsFinished";
 
 	private final static String modelName = "N2V";
 	private final static String modelFileName = "n2v.model.yaml";
@@ -71,7 +83,8 @@ public class ModelSpecification {
 	private final static String modelFormatVersion = "0.1.0";
 	private final static String modelLanguage = "java";
 	private final static String modelFramework = "tensorflow";
-	private final static String modelSource = N2VTraining.class.getCanonicalName();
+	private final static String modelSource = N2VPrediction.class.getCanonicalName();
+	private final static String modelTrainingSource = N2VTraining.class.getCanonicalName();
 	private final static String modelInputName = "raw";
 	private final static String modelDataType = "float32";
 	private final static List modelInputDataRange = Arrays.asList("-inf", "inf");
@@ -81,7 +94,7 @@ public class ModelSpecification {
 	private final static String modelPostprocessing = N2VPrediction.class.getCanonicalName() + "::postprocess";
 	private final static String modelWeightsSource = "./variables/variables";
 
-	static void writeModelConfigFile(N2VConfig config, OutputHandler outputHandler, File targetDirectory) {
+	static void writeModelConfigFile(N2VConfig config, OutputHandler outputHandler, File targetDirectory, int stepsFinished) {
 		writeDependenciesFile(targetDirectory);
 		Map<String, Object> normalizeArgs = new LinkedHashMap<>();
 		normalizeArgs.put(idMean, outputHandler.getMean().get());
@@ -148,6 +161,20 @@ public class ModelSpecification {
 		output.put(idNodeShape, outputShape);
 		outputs.add(output);
 		data.put(idOutputs, outputs);
+		Map<String, Object> training = new LinkedHashMap<>();
+		training.put(idTrainingSource, modelTrainingSource);
+		Map<String, Object> trainingKwargs = new LinkedHashMap<>();
+		trainingKwargs.put(idTrainingKwargsBatchDimLength, config.getTrainBatchDimLength());
+		trainingKwargs.put(idTrainingKwargsBatchSize, config.getTrainBatchSize());
+		trainingKwargs.put(idTrainingKwargsLearningRate, config.getLearningRate());
+		trainingKwargs.put(idTrainingKwargsTrainDimensions, config.getTrainDimensions());
+		trainingKwargs.put(idTrainingKwargsNeighborhoodRadius, config.getNeighborhoodRadius());
+		trainingKwargs.put(idTrainingKwargsNumEpochs, config.getNumEpochs());
+		trainingKwargs.put(idTrainingKwargsNumStepsPerEpoch, config.getStepsPerEpoch());
+		trainingKwargs.put(idTrainingKwargsPatchDimLength, config.getTrainPatchDimLength());
+		trainingKwargs.put(idTrainingKwargsStepsFinished, stepsFinished);
+		training.put(idTrainingKwargs, trainingKwargs);
+		data.put(idTraining, training);
 		Map<String, Object> prediction = new LinkedHashMap<>();
 		Map<String, Object> preprocess = new LinkedHashMap<>();
 		preprocess.put(idPredictionProcessSpec, modelPreprocessing);

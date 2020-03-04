@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class OutputHandler {
+	private final N2VConfig config;
+	private final N2VTraining training;
 	private FloatType mean = new FloatType();
 
 	private FloatType stdDev = new FloatType();
@@ -26,7 +28,6 @@ public class OutputHandler {
 	private float currentMse = Float.MAX_VALUE;
 	private float currentValidationLoss = Float.MAX_VALUE;
 	private float bestValidationLoss = Float.MAX_VALUE;
-	private final int trainDimensions;
 
 	private File mostRecentModelDir;
 	private File bestModelDir;
@@ -34,12 +35,15 @@ public class OutputHandler {
 	private Tensor< String > checkpointPrefix;
 	private boolean checkpointExists;
 
-	public OutputHandler(int trainDimensions) {
-		this.trainDimensions = trainDimensions;
+	public OutputHandler(N2VConfig config, N2VTraining training) {
+		this.config = config;
+		this.currentLearningRate = config.getLearningRate();
+		this.training = training;
 	}
 
 	public File exportLatestTrainedModel() throws IOException {
 		if(noCheckpointSaved) return null;
+		ModelSpecification.writeModelConfigFile(config, this, mostRecentModelDir, training.getStepsFinished());
 		return N2VUtils.saveTrainedModel(mostRecentModelDir);
 	}
 
@@ -53,14 +57,11 @@ public class OutputHandler {
 			bestValidationLoss = currentValidationLoss;
 			try {
 				FileUtils.copyDirectory(mostRecentModelDir, bestModelDir);
+				ModelSpecification.writeModelConfigFile(config, this, bestModelDir, training.getStepsFinished());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-	}
-
-	public void writeModelConfigFile(N2VConfig config) {
-		ModelSpecification.writeModelConfigFile(config, this, mostRecentModelDir);
 	}
 
 	void createSavedModelDirs() throws IOException {
@@ -71,7 +72,7 @@ public class OutputHandler {
 
 		checkpointExists = false;
 
-		String predictionGraphDir = trainDimensions == 2 ? "prediction_2d" : "prediction_3d";
+		String predictionGraphDir = config.getTrainDimensions() == 2 ? "prediction_2d" : "prediction_3d";
 		byte[] predictionGraphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + predictionGraphDir + "/saved_model.pb") );
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "saved_model.pb"), predictionGraphDef);
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "training_model.pb"), predictionGraphDef);
@@ -91,7 +92,7 @@ public class OutputHandler {
 	}
 
 	void loadUntrainedGraph(Graph graph) throws IOException {
-		String graphName = trainDimensions == 2 ? "graph_2d.pb" : "graph_3d.pb";
+		String graphName = config.getTrainDimensions() == 2 ? "graph_2d.pb" : "graph_3d.pb";
 		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
 		graph.importGraphDef( graphDef );
 //		graph.operations().forEachRemaining( op -> {

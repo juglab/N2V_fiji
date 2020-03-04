@@ -8,6 +8,7 @@ public class N2VConfig {
 	private int stepsPerEpoch = 200;
 	private int neighborhoodRadius = 5;
 	private int trainDimensions = 2;
+	private float learningRate = 0.0004f;
 
 	public N2VConfig setStepsPerEpoch(final int steps) {
 		stepsPerEpoch = steps;
@@ -70,5 +71,13 @@ public class N2VConfig {
 
 	public int getNeighborhoodRadius() {
 		return neighborhoodRadius;
+	}
+
+	public float getLearningRate() {
+		return learningRate;
+	}
+
+	public void setLearningRate(float learningRate) {
+		this.learningRate = learningRate;
 	}
 }
