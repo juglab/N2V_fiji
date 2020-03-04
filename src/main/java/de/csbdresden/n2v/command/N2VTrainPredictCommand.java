@@ -142,7 +142,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 				.setBatchDimLength(batchDimLength)
 				.setPatchDimLength(patchDimLength)
 				.setNeighborhoodRadius(neighborhoodRadius));
-		n2v.getDialog().addTask( "Prediction" );
+		if(n2v.getDialog() != null) n2v.getDialog().addTask( "Prediction" );
 
 		try {
 			if(training.equals(prediction)) {
@@ -172,7 +172,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 		if(isCanceled()) return;
 
-		n2v.getDialog().setTaskStart(2);
+		if(n2v.getDialog() != null) n2v.getDialog().setTaskStart(2);
 
 		if(latestTrainedModelPath == null) return;
 
@@ -180,7 +180,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 		prediction.setModelFile(new File(latestTrainedModelPath));
 		this.output = prediction.predictPadded(this.prediction);
 
-		n2v.getDialog().setTaskDone(2);
+		if(n2v.getDialog() != null) n2v.getDialog().setTaskDone(2);
 
 	}
 
