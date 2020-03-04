@@ -2,6 +2,8 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.csbdeep.converter.FloatRealConverter;
 import de.csbdresden.n2v.predict.N2VPrediction;
+import net.imagej.Dataset;
+import net.imagej.DatasetService;
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
@@ -25,7 +27,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 	private RandomAccessibleInterval< T > input;
 
 	@Parameter( type = ItemIO.OUTPUT )
-	private RandomAccessibleInterval< FloatType > output;
+	private Dataset output;
 
 	@Parameter
 	private File modelFile;
@@ -35,10 +37,10 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 
 //	@Parameter
 //	private DisplayService displayService;
-//
-//	@Parameter
-//	private DatasetService datasetService;
-//
+
+	@Parameter
+	private DatasetService datasetService;
+
 //	@Parameter
 //	private ImageDisplayService imageDisplayService;
 
@@ -58,7 +60,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 		prediction.setModelFile(modelFile);
 		prediction.setShowDialog(true);
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
-		output = prediction.predictPadded(converted);
+		output = datasetService.create(prediction.predictPadded(converted));
 //		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
 //		output = datasetService.create(_output);
 //		output.initializeColorTables(colorTables.size());
