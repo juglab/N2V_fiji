@@ -87,7 +87,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
 
 			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false,
-					"prediction", prediction, "modelFile", modelFile ).get();
+					"input", prediction, "modelFile", modelFile ).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else
 			System.out.println( "Cannot find training image " + predictionInput.getAbsolutePath() );
