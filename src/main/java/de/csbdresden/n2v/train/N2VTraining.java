@@ -299,12 +299,12 @@ public class N2VTraining {
 					return;
 				}
 				training_data.on_epoch_end();
-				outputHandler.saveCheckpoint(sess);
 				float validationLoss = validate(sess, validation_data, tensorWeights);
 				if (Thread.interrupted() || isCanceled()) {
 					tensorWeights.close();
 					return;
 				}
+				outputHandler.saveCheckpoint(sess);
 				outputHandler.setCurrentValidationLoss(validationLoss);
 				if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
 				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
@@ -321,6 +321,15 @@ public class N2VTraining {
 //			if (inputs.size() > 0) uiService.show("inputs", Views.stack(inputs));
 //			if (targets.size() > 0) uiService.show("targets", Views.stack(targets));
 
+		}
+		catch(IllegalStateException e) {
+			cancel();
+			e.printStackTrace();
+			if(e.getMessage().contains("OOM")) {
+				logService.error("Not enough memory available. Try to reduce the training batch size.");
+			} else {
+				e.printStackTrace();
+			}
 		}
 	}
 
