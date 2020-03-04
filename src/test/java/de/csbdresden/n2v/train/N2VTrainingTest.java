@@ -39,6 +39,8 @@ public class N2VTrainingTest {
 			n2v.train();
 			n2v.dispose();
 //		}
+
+		ij.context().dispose();
 	}
 
 	@Test
@@ -65,5 +67,7 @@ public class N2VTrainingTest {
 		n2v.input().addTrainingData(trainingBatches);
 		n2v.input().addValidationData(validationBatches);
 		n2v.train();
+
+		ij.context().dispose();
 	}
 }

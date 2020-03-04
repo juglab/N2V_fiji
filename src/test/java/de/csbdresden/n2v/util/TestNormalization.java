@@ -47,6 +47,8 @@ public class TestNormalization {
 		assertEquals(0.0, meanNormalized.get(), 0.00001);
 		assertEquals(1.0, stdDevNormalized.get(), 0.00001);
 
+		ij.context().dispose();
+
 	}
 
 }
