@@ -32,6 +32,9 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 	@Parameter
 	private File modelFile;
 
+	@Parameter(required = false)
+	private boolean showProgressDialog = true;
+
 	@Parameter
 	private Context context;
 
@@ -58,7 +61,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 //		}
 		N2VPrediction prediction = new N2VPrediction(context);
 		prediction.setModelFile(modelFile);
-		prediction.setShowDialog(true);
+		prediction.setShowDialog(showProgressDialog);
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
 		output = datasetService.create(prediction.predictPadded(converted));
 //		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
