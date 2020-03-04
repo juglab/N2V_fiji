@@ -342,38 +342,19 @@ public class N2VTraining {
 	}
 
 	private List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> makeValidationData(double n2v_perc_pix) {
-		int unet_n_depth = 2;
 		int n_train = input().getX().size();
 		int n_val = input().getValidationX().size();
-
 		double frac_val = (1.0 * n_val) / (n_train + n_val);
 		double frac_warn = 0.05;
 		if (frac_val < frac_warn) {
 			logService.info("small number of validation images (only " + (100 * frac_val) + "% of all images)");
 		}
-		//        axes = axes_check_and_normalize('S'+self.config.axes,_X.ndim)
-		//        ax = axes_dict(axes)
-		int div_by = 2 * unet_n_depth;
-		//        axes_relevant = ''.join(a for a in 'XYZT' if a in axes)
-		long val_num_pix = 1;
-		long train_num_pix = 1;
-		//        val_patch_shape = ()
-
-		long[] _val_patch_shape = new long[input().getX().get(0).numDimensions() - 2];
-		for (int i = 0; i < input().getX().get(0).numDimensions() - 2; i++) {
-			long n = input().getX().get(0).dimension(i);
-			val_num_pix *= input().getValidationX().get(0).dimension(i);
-			train_num_pix *= input().getX().get(0).dimension(i);
-			_val_patch_shape[i] = input().getValidationX().get(0).dimension(i);
-			if (n % div_by != 0) {
-				System.err.println("training images must be evenly divisible by " + div_by
-						+ "along axes XY (axis " + i + " has incompatible size " + n + ")");
-			}
-		}
-		Dimensions val_patch_shape = FinalDimensions.wrap(_val_patch_shape);
+		long[] patchShapeData = new long[config().getTrainDimensions()];
+		Arrays.fill(patchShapeData, config().getTrainPatchDimLength());
+		Dimensions patch_shape = new FinalDimensions(patchShapeData);
 		N2VDataWrapper<FloatType> valData = new N2VDataWrapper<>(input().getValidationX(),
 				Math.min(config().getTrainBatchSize(), input().getValidationX().size()),
-				n2v_perc_pix, val_patch_shape, config().getNeighborhoodRadius(),
+				n2v_perc_pix, patch_shape, config().getNeighborhoodRadius(),
 				N2VDataWrapper::uniform_withCP);
 
 		List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validationDataList = new ArrayList<>();
