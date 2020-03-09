@@ -6,7 +6,7 @@ Noise reduction (pixel wise independent) by training a CNN on single noisy image
 ## How to use
 - Add this update site to Fiji: https://sites.imagej.net/N2V
 - For GPU support (Linux, Windows):
-  - Install `CUDA 10.0` and `cuDNN`. Also see OS specific notes below.
+  - Install `CUDA 10.0` and a **matching** `cuDNN` version. Also see OS specific notes below.
   - In Fiji, open `Edit > Options > TensorFlow...`, install `TF 1.13.1 GPU` and restart Fiji.
   - You can test if it works by running `Edit > Options > TensorFlow...` again - in the bottom status line it should state that the GPU TF version is active.
 - Try the plugins in `Plugins > CSBDeep > N2V`
