@@ -1,6 +1,5 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.csbdeep.converter.FloatRealConverter;
 import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;

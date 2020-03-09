@@ -1,22 +1,10 @@
 package de.csbdresden.n2v.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.util.Collections;
-import java.util.List;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTitleAnnotation;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.block.BlockBorder;
 import org.jfree.chart.plot.XYPlot;
@@ -29,6 +17,12 @@ import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.xy.VectorDataItem;
 import org.jfree.data.xy.VectorSeries;
 import org.jfree.data.xy.VectorSeriesCollection;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.util.Collections;
+import java.util.List;
 
 public class N2VChartPanel extends JPanel {
 
@@ -47,7 +41,7 @@ public class N2VChartPanel extends JPanel {
 	private VectorSeriesCollection data;
 	private VectorSeries averageLossData;
 	private VectorSeries validationLossData;
-	private de.csbdresden.n2v.ui.TrainingProgressPanel progressPanel;
+	private TrainingProgressPanel progressPanel;
 
 	private final static ImageIcon waitingIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
 

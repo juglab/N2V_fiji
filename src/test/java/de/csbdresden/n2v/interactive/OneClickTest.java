@@ -5,7 +5,6 @@ import net.imagej.ImageJ;
 import net.imglib2.FinalDimensions;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
-import org.junit.Test;
 
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
