@@ -3,12 +3,14 @@ package de.csbdresden.n2v.train;
 public class N2VConfig {
 	private int numEpochs = 300;
 	private int trainBatchSize = 180;
-	private int trainBatchDimLength = 180;
-	private int trainPatchDimLength = 60;
+	private int trainPatchShape = 60;
 	private int stepsPerEpoch = 200;
 	private int neighborhoodRadius = 5;
 	private int trainDimensions = 2;
 	private float learningRate = 0.0004f;
+
+	private int[] maskSpan = new int[]{0, 0};
+	private int networkDepth = 4;
 
 	public N2VConfig setStepsPerEpoch(final int steps) {
 		stepsPerEpoch = steps;
@@ -25,13 +27,8 @@ public class N2VConfig {
 		return this;
 	}
 
-	public N2VConfig setPatchDimLength(final int patchDimLength) {
-		trainPatchDimLength = patchDimLength;
-		return this;
-	}
-
-	public N2VConfig setBatchDimLength(final int batchDimLength) {
-		trainBatchDimLength = batchDimLength;
+	public N2VConfig setPatchShape(final int patchShape) {
+		trainPatchShape = patchShape;
 		return this;
 	}
 
@@ -42,6 +39,16 @@ public class N2VConfig {
 
 	public N2VConfig setNeighborhoodRadius(int radius) {
 		this.neighborhoodRadius = radius;
+		return this;
+	}
+
+	public N2VConfig setMaskSpan(int[] maskSpan) {
+		this.maskSpan = maskSpan;
+		return this;
+	}
+
+	public N2VConfig setLearningRate(float learningRate) {
+		this.learningRate = learningRate;
 		return this;
 	}
 
@@ -61,12 +68,8 @@ public class N2VConfig {
 		return trainBatchSize;
 	}
 
-	public long getTrainBatchDimLength() {
-		return trainBatchDimLength;
-	}
-
-	public long getTrainPatchDimLength() {
-		return trainPatchDimLength;
+	public long getTrainPatchShape() {
+		return trainPatchShape;
 	}
 
 	public int getNeighborhoodRadius() {
@@ -77,7 +80,11 @@ public class N2VConfig {
 		return learningRate;
 	}
 
-	public void setLearningRate(float learningRate) {
-		this.learningRate = learningRate;
+	public int[] getMaskSpan() {
+		return maskSpan;
+	}
+
+	public int getNetworkDepth() {
+		return networkDepth;
 	}
 }

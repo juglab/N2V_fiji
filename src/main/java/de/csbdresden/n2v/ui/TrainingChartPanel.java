@@ -21,10 +21,11 @@ import org.jfree.data.xy.VectorSeriesCollection;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 
-public class N2VChartPanel extends JPanel {
+public class TrainingChartPanel extends JPanel {
 
 	private final static int DEFAULT_CHART_HEIGHT = 400;
 	private final static int DEFAULT_CHART_WIDTH = 600;
@@ -43,9 +44,9 @@ public class N2VChartPanel extends JPanel {
 	private VectorSeries validationLossData;
 	private TrainingProgressPanel progressPanel;
 
-	private final static ImageIcon waitingIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
+	private final static ImageIcon waitingIcon = new ImageIcon( TrainingProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
 
-	public N2VChartPanel( int nEpochs, int nEpochSteps ) {
+	public TrainingChartPanel(int nEpochs, int nEpochSteps ) {
 
 		setLayout( new BorderLayout() );
 		setBackground( Color.WHITE );
@@ -155,4 +156,7 @@ public class N2VChartPanel extends JPanel {
 
 	}
 
+	public void setWaitingIcon(URL iconUrl, float iconScale, int iconAlignment, int iconOffsetX, int iconOffsetY) {
+		waitLayer.setWaitingIcon(iconUrl, iconScale, iconAlignment, iconOffsetX, iconOffsetY);
+	}
 }

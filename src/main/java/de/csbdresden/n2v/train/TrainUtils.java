@@ -1,4 +1,4 @@
-package de.csbdresden.n2v.util;
+package de.csbdresden.n2v.train;
 
 import net.imagej.ops.OpService;
 import net.imglib2.Cursor;
@@ -10,7 +10,7 @@ import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.IntervalView;
+import net.imglib2.util.Pair;
 import net.imglib2.view.Views;
 
 import java.io.BufferedInputStream;
@@ -22,24 +22,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-public class N2VUtils {
+public class TrainUtils {
 
-	public static <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> normalize(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
-		Img<T> rai = opService.create().img(input, input.randomAccess().get().copy());
-		LoopBuilder.setImages( rai, input ).forEachPixel( (res, in ) -> {
-			res.set(in);
-			res.sub(mean);
-			res.div(stdDev);
-
+	public static void normalizeInplace(RandomAccessibleInterval<FloatType> data, FloatType mean, FloatType stdDev) {
+		LoopBuilder.setImages( data ).forEachPixel( (pixel ) -> {
+			pixel.sub(mean);
+			pixel.div(stdDev);
 		} );
-		return rai;
-//		IterableInterval< T > rai = opService.math().subtract( Views.iterable( input ), mean );
-//		return (RandomAccessibleInterval<T>) opService.math().divide( rai, stdDev );
 	}
 
 	public static <T extends RealType<T>> void denormalizeInplace(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
@@ -172,15 +165,9 @@ public class N2VUtils {
 		System.out.println("Done Unzipping:" + source.getName());
 	}
 
-	public static void normalize(List<RandomAccessibleInterval<FloatType>> data, FloatType mean, FloatType stdDev, OpService opService) {
-		for (int i = 0; i < data.size(); i++) {
-			data.set(i, normalize(data.get(i), mean, stdDev, opService));
-		}
-	}
-
-	public static <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> copy(IntervalView<T> img) {
+	public static <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> copy(RandomAccessibleInterval<T> img) {
 		Img<T> res = new ArrayImgFactory<>(img.randomAccess().get()).create(img);
-		Cursor<T> inCursor = img.localizingCursor();
+		Cursor<T> inCursor = Views.iterable(img).localizingCursor();
 		RandomAccess<T> outRA = res.randomAccess();
 		while(inCursor.hasNext()) {
 			inCursor.next();

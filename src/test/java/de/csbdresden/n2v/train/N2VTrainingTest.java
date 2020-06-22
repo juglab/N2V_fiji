@@ -7,11 +7,12 @@ import net.imglib2.type.numeric.real.FloatType;
 import org.junit.Test;
 
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 public class N2VTrainingTest {
 
 	@Test
-	public void testTrainingValidationBatches2D() {
+	public void testTrainingValidationBatches2D() throws ExecutionException {
 
 		ImageJ ij = new ImageJ();
 		ij.ui().setHeadless(true);
@@ -30,8 +31,7 @@ public class N2VTrainingTest {
 					.setNumEpochs(2)
 					.setStepsPerEpoch(2)
 					.setBatchSize((int)batchSize)
-					.setBatchDimLength(32)
-					.setPatchDimLength(32));
+					.setPatchShape(32));
 			n2v.input().addTrainingData(trainingBatches);
 			n2v.input().addValidationData(validationBatches);
 			n2v.train();
@@ -42,7 +42,7 @@ public class N2VTrainingTest {
 	}
 
 	@Test
-	public void testTrainingValidationBatches3D() {
+	public void testTrainingValidationBatches3D() throws ExecutionException {
 
 		ImageJ ij = new ImageJ();
 		ij.ui().setHeadless(true);
@@ -60,8 +60,7 @@ public class N2VTrainingTest {
 				.setNumEpochs(1)
 				.setStepsPerEpoch(2)
 				.setBatchSize((int)batchSize)
-				.setBatchDimLength(32)
-				.setPatchDimLength(16));
+				.setPatchShape(12));
 		n2v.input().addTrainingData(trainingBatches);
 		n2v.input().addValidationData(validationBatches);
 		n2v.train();

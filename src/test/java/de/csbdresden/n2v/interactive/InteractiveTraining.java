@@ -12,9 +12,10 @@ import net.imglib2.view.Views;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class InteractiveTraining {
-		public static void main(String...args) {
+		public static void main(String...args) throws ExecutionException {
 			ImageJ ij = new ImageJ();
 			ij.launch();
 			Img<FloatType> blackImg = ij.op().create().img(new FinalDimensions(32, 32), new FloatType());
@@ -45,8 +46,7 @@ public class InteractiveTraining {
 					.setNumEpochs(10)
 					.setStepsPerEpoch(10)
 					.setBatchSize((int)batchSize)
-					.setBatchDimLength(32)
-					.setPatchDimLength(16));
+					.setPatchShape(16));
 			n2v.input().addTrainingData(stack);
 			n2v.input().addValidationData(stack);
 			n2v.train();

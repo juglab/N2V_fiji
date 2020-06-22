@@ -30,7 +30,7 @@ public class OneClickTest {
 					"mode3D", false,
 					"batchSize", 128,
 					"batchDimLength", 128,
-					"patchDimLength", 64).get();
+					"patchShape", 64).get();
 		}
 	}
 }

@@ -10,10 +10,11 @@ import net.imglib2.type.numeric.integer.IntType;
 import java.io.File;
 import java.io.IOException;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 public class TrainOnNoise {
 
-	public static void main(String...args) throws IOException {
+	public static void main(String...args) throws IOException, ExecutionException {
 
 		ImageJ ij = new ImageJ();
 		ij.ui().setHeadless(true);
@@ -29,8 +30,8 @@ public class TrainOnNoise {
 				.setNumEpochs(100)
 				.setStepsPerEpoch(200)
 				.setBatchSize(64)
-				.setPatchDimLength(180)
-				.setPatchDimLength(60));
+				.setPatchShape(180)
+				.setPatchShape(60));
 		n2v.input().addTrainingData(ij.op().convert().float32(trainingBatches));
 		n2v.input().addValidationData(ij.op().convert().float32(validationBatches));
 		n2v.train();

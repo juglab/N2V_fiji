@@ -1,6 +1,6 @@
 package de.csbdresden.n2v.train;
 
-import de.csbdresden.n2v.ui.N2VProgress;
+import de.csbdresden.n2v.ui.TrainingProgress;
 import io.scif.services.DatasetIOService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
@@ -27,7 +27,7 @@ public class InputHandler {
 	DatasetIOService datasetIOService;
 
 	private final N2VConfig config;
-	private N2VProgress dialog;
+	private TrainingProgress dialog;
 
 	private final List< RandomAccessibleInterval< FloatType > > X = new ArrayList<>();
 	private final List< RandomAccessibleInterval< FloatType > > validationX = new ArrayList<>();
@@ -37,7 +37,7 @@ public class InputHandler {
 		context.inject(this);
 	}
 
-	void setDialog(N2VProgress dialog) {
+	void setDialog(TrainingProgress dialog) {
 		this.dialog = dialog;
 	}
 
@@ -47,7 +47,7 @@ public class InputHandler {
 		logService.info( "Tile training and validation data.." );
 		if(dialog != null) dialog.setCurrentTaskMessage("Tiling training and validation data" );
 
-		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService );
+		List< RandomAccessibleInterval< FloatType > > tiles = N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainPatchShape(), logService );
 
 		int trainEnd = (int) (tiles.size() * (1 - validationAmount));
 		for (int i = 0; i < trainEnd; i++) {
@@ -90,7 +90,7 @@ public class InputHandler {
 
 		logService.info("Training image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(training)));
 
-		X.addAll(N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService ));
+		X.addAll(N2VDataGenerator.createTiles( training, config.getTrainDimensions(), config.getTrainPatchShape(), logService ));
 	}
 
 	public void addTrainingData(File trainingFolder) {
@@ -118,7 +118,7 @@ public class InputHandler {
 
 		logService.info("Validation image dimensions: " + Arrays.toString(Intervals.dimensionsAsIntArray(validation)));
 
-		validationX.addAll(N2VDataGenerator.createTiles( validation, config.getTrainDimensions(), config.getTrainBatchDimLength(), logService ));
+		validationX.addAll(N2VDataGenerator.createTiles( validation, config.getTrainDimensions(), config.getTrainPatchShape(), logService ));
 	}
 
 	public void addValidationData(File trainingFolder) {

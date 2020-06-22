@@ -1,9 +1,12 @@
 package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.predict.N2VPrediction;
+import de.csbdresden.n2v.train.TrainUtils;
+import io.scif.MissingLibraryException;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
@@ -12,27 +15,31 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.ItemIO;
-import org.scijava.command.Command;
 import org.scijava.command.CommandModule;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
-@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>predict" )
-public class N2VPredictCommand <T extends RealType<T>> implements Command {
+@Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
+public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePredictionCommand {
+
+	@Parameter(label = "Trained model file (.zip)")
+	private File modelFile;
 
 	@Parameter
 	private RandomAccessibleInterval< T > input;
 
+	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)")
+	private String axes = "XY";
+
 	@Parameter( type = ItemIO.OUTPUT )
 	private Dataset output;
 
-	@Parameter
-	private File modelFile;
-
-	@Parameter(required = false)
-	private boolean showProgressDialog = true;
+//	@Parameter(required = false)
+//	private boolean showProgressDialog = true;
 
 	@Parameter
 	private Context context;
@@ -59,10 +66,19 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 //			colorTables = view.getColorTables();
 //		}
 		N2VPrediction prediction = new N2VPrediction(context);
-		prediction.setModelFile(modelFile);
-		prediction.setShowDialog(showProgressDialog);
+		try {
+			prediction.setTrainedModel(modelFile.getAbsolutePath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+//		prediction.setShowDialog(showProgressDialog);
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
-		output = datasetService.create(prediction.predictPadded(converted));
+		converted = TrainUtils.copy(converted);
+		try {
+			output = datasetService.create(prediction.predictPadded(converted, axes));
+		} catch (FileNotFoundException | MissingLibraryException e) {
+			e.printStackTrace();
+		}
 //		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
 //		output = datasetService.create(_output);
 //		output.initializeColorTables(colorTables.size());
@@ -79,7 +95,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 
 //		ij.log().setLevel(LogLevel.TRACE);
 
-		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/CSBDeep-N2V/src/main/resources/trained-model.zip");
+		File modelFile = new File("/home/random/Documents/2020-06 NEUBIAS/models/n2v.bioimage.io.zip");
 
 		final File predictionInput = new File( "/home/random/Development/python/n2v/examples/2D/denoising2D_BSD68/data/BSD68_reproducibility_data/val/DCNN400_validation_gaussian25.tif" );
 
@@ -91,7 +107,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements Command {
 			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
 
 			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false,
-					"input", prediction, "modelFile", modelFile ).get();
+					"input", prediction, "modelFile", modelFile, "axes", "XYB" ).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else
 			System.out.println( "Cannot find training image " + predictionInput.getAbsolutePath() );

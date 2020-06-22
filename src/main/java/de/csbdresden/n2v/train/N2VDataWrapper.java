@@ -167,9 +167,9 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 
 	private static List<Point> get_stratified_coords3D(long box_size, Dimensions shape) {
 		List<Point> coords = new ArrayList<>();
-		int box_count_x = (int) Math.ceil(shape.dimension(0) / box_size);
-		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
-		int box_count_z = (int) Math.ceil(shape.dimension(2) / box_size);
+		int box_count_x = (int) Math.ceil(shape.dimension(0) / (float)box_size);
+		int box_count_y = (int) Math.ceil(shape.dimension(1) / (float)box_size);
+		int box_count_z = (int) Math.ceil(shape.dimension(2) / (float)box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
 				for (int k = 0; k < box_count_z; k++) {
@@ -191,8 +191,8 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 
 	private static List<Point> get_stratified_coords2D(long box_size, Dimensions shape) {
 		List<Point> coords = new ArrayList<>();
-		int box_count_x = (int) Math.ceil(shape.dimension(0) / box_size);
-		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
+		int box_count_x = (int) Math.ceil(shape.dimension(0) / (float)box_size);
+		int box_count_y = (int) Math.ceil(shape.dimension(1) / (float)box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
 				Point p = new Point((long)(Math.random() * box_size), (long)(Math.random() * box_size));

@@ -1,16 +1,8 @@
 package de.csbdresden.n2v.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
+import de.csbdresden.n2v.train.ModelZooTraining;
+import org.scijava.app.StatusService;
+import org.scijava.thread.ThreadService;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,13 +13,20 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.text.SimpleAttributeSet;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.scijava.app.StatusService;
-import org.scijava.thread.ThreadService;
-
-import de.csbdresden.n2v.train.N2VTraining;
-
-public class N2VProgress extends JPanel {
+public class TrainingProgress extends JPanel {
 
 	private static final long serialVersionUID = 1L;
 	private class GuiTask {
@@ -40,7 +39,7 @@ public class N2VProgress extends JPanel {
 	}
 
 	private final static String FRAME_TITLE = "N2V for Fiji";
-	private final static ImageIcon busyIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "ajax-loader.gif" ) );
+	private final static ImageIcon busyIcon = new ImageIcon( TrainingProgress.class.getClassLoader().getResource( "ajax-loader.gif" ) );
 
 	//private final StatusService status;
 	private final ThreadService threadService;
@@ -60,15 +59,13 @@ public class N2VProgress extends JPanel {
 
 	private final SimpleAttributeSet red = new SimpleAttributeSet();
 
-	private N2VTraining n2v;
-	private N2VChartPanel chart;
+	private TrainingChartPanel chart;
 	private JLabel warningLabel;
 
-	public N2VProgress( JFrame frame, N2VTraining n2v, int nEpochs, int nEpochSteps, StatusService status, ThreadService threadService ) {
+	public TrainingProgress(JFrame frame, ModelZooTraining training, int nEpochs, int nEpochSteps, StatusService status, ThreadService threadService ) {
 
 		super( new BorderLayout() );
 		setBackground( Color.WHITE );
-		this.n2v = n2v;
 
 		//this.status = status;
 		this.frame = frame;
@@ -92,7 +89,7 @@ public class N2VProgress extends JPanel {
 		centerPanel.setBackground( Color.WHITE );
 		centerPanel.setLayout( new BoxLayout( centerPanel, BoxLayout.Y_AXIS ) );
 		centerPanel.add( Box.createRigidArea( new Dimension( 10, 0 ) ) );
-		chart = new N2VChartPanel( nEpochs, nEpochSteps );
+		chart = new TrainingChartPanel( nEpochs, nEpochSteps );
 		centerPanel.add( chart.getPanel() );
 		add( centerPanel, BorderLayout.CENTER );
 
@@ -109,12 +106,12 @@ public class N2VProgress extends JPanel {
 		gbc.gridx = 0;
 
 		cancelBtn = new JButton( "Cancel" );
-		cancelBtn.addActionListener(e -> n2v.cancel());
+		cancelBtn.addActionListener(e -> training.cancel());
 		buttonsPanel.add( cancelBtn, gbc );
 
 		gbc.gridx = 1;
 		finishBtn = new JButton( "Finish Training" );
-		finishBtn.addActionListener( e -> n2v.stopTraining() );
+		finishBtn.addActionListener( e -> training.stopTraining() );
 		finishBtn.setEnabled(false);
 		buttonsPanel.add( finishBtn, gbc );
 
@@ -238,13 +235,13 @@ public class N2VProgress extends JPanel {
 		//}
 	}
 
-	public static N2VProgress create( N2VTraining n2v, int nEpochs, int nEpochSteps, StatusService status, ThreadService threadService ) {
+	public static TrainingProgress create(ModelZooTraining n2v, int nEpochs, int nEpochSteps, StatusService status, ThreadService threadService ) {
 
 		// Create and set up the window.
 		final JFrame frame = new JFrame( FRAME_TITLE );
 
 		// Create and set up the content pane.
-		final N2VProgress newContentPane = new N2VProgress( frame, n2v, nEpochs, nEpochSteps, status, threadService );
+		final TrainingProgress newContentPane = new TrainingProgress( frame, n2v, nEpochs, nEpochSteps, status, threadService );
 
 		return newContentPane;
 	}
@@ -265,5 +262,13 @@ public class N2VProgress extends JPanel {
 
 	public void setWarning( String string ) {
 		warningLabel.setText( string );
+	}
+
+	public void setTitle(String title) {
+		frame.setTitle(title);
+	}
+
+	public void setWaitingIcon(URL iconUrl, float iconScale, int iconAlignment, int iconOffsetX, int iconOffsetY) {
+		chart.setWaitingIcon(iconUrl, iconScale, iconAlignment, iconOffsetX, iconOffsetY);
 	}
 }

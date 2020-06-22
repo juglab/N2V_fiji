@@ -1,10 +1,19 @@
 package de.csbdresden.n2v.train;
 
 import de.csbdresden.n2v.util.N2VUtils;
+import io.scif.img.ImgSaver;
+import net.imagej.modelzoo.specification.DefaultModelSpecification;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImg;
+import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.real.FloatType;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
+import org.scijava.Context;
 import org.tensorflow.Graph;
+import org.tensorflow.Output;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
@@ -14,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
 
 public class OutputHandler {
 	private final N2VConfig config;
@@ -34,16 +44,20 @@ public class OutputHandler {
 	private boolean noCheckpointSaved = true;
 	private Tensor< String > checkpointPrefix;
 	private boolean checkpointExists;
+	private ImgSaver imgSaver;
 
-	public OutputHandler(N2VConfig config, N2VTraining training) {
+	public OutputHandler(N2VConfig config, N2VTraining training, Context context) {
 		this.config = config;
 		this.currentLearningRate = config.getLearningRate();
 		this.training = training;
+		imgSaver = new ImgSaver(context);
 	}
 
 	public File exportLatestTrainedModel() throws IOException {
 		if(noCheckpointSaved) return null;
-		ModelSpecification.writeModelConfigFile(config, this, mostRecentModelDir, training.getStepsFinished());
+		N2VModelSpecification spec = new N2VModelSpecification();
+		spec.setName(new Date().toString() + " last checkpoint");
+		spec.writeModelConfigFile(config, this, mostRecentModelDir, training.getStepsFinished());
 		return N2VUtils.saveTrainedModel(mostRecentModelDir);
 	}
 
@@ -57,7 +71,9 @@ public class OutputHandler {
 			bestValidationLoss = currentValidationLoss;
 			try {
 				FileUtils.copyDirectory(mostRecentModelDir, bestModelDir);
-				ModelSpecification.writeModelConfigFile(config, this, bestModelDir, training.getStepsFinished());
+				N2VModelSpecification spec = new N2VModelSpecification();
+				spec.setName(new Date().toString() + " lowest loss");
+				spec.writeModelConfigFile(config, this, bestModelDir, training.getStepsFinished());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -72,7 +88,7 @@ public class OutputHandler {
 
 		checkpointExists = false;
 
-		String predictionGraphDir = config.getTrainDimensions() == 2 ? "prediction_2d" : "prediction_3d";
+		String predictionGraphDir = config.getTrainDimensions() == 2 ? "n2v_prediction_2d" : "n2v_prediction_3d";
 		byte[] predictionGraphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + predictionGraphDir + "/saved_model.pb") );
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "saved_model.pb"), predictionGraphDef);
 		FileUtils.writeByteArrayToFile(new File(mostRecentModelDir, "training_model.pb"), predictionGraphDef);
@@ -92,7 +108,7 @@ public class OutputHandler {
 	}
 
 	void loadUntrainedGraph(Graph graph) throws IOException {
-		String graphName = config.getTrainDimensions() == 2 ? "graph_2d.pb" : "graph_3d.pb";
+		String graphName = config.getTrainDimensions() == 2 ? "n2v_graph_2d.pb" : "n2v_graph_3d.pb";
 		byte[] graphDef = IOUtils.toByteArray( getClass().getResourceAsStream("/" + graphName) );
 		graph.importGraphDef( graphDef );
 //		graph.operations().forEachRemaining( op -> {
@@ -138,9 +154,21 @@ public class OutputHandler {
 		}
 	}
 
-	void saveCheckpoint(Session sess) {
+	void saveCheckpoint(Session sess, RandomAccessibleInterval<FloatType> input, RandomAccessibleInterval<FloatType> output) {
 		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 		noCheckpointSaved = false;
+		imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestInput()).getAbsolutePath(),
+				toImg(input));
+		imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestOutput()).getAbsolutePath(),
+				toImg(output));
+	}
+
+	private Img<?> toImg(RandomAccessibleInterval<FloatType> input) {
+		ArrayImg<FloatType, ?> res = new ArrayImgFactory<>(new FloatType()).create(input);
+		LoopBuilder.setImages(input, res).forEachPixel((in, out) -> {
+			out.set(in);
+		});
+		return res;
 	}
 
 	public float getCurrentLoss() {
