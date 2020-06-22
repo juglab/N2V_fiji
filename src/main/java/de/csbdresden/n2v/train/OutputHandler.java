@@ -185,10 +185,12 @@ public class OutputHandler {
 	void saveCheckpoint(Session sess, RandomAccessibleInterval<FloatType> input, RandomAccessibleInterval<FloatType> output) {
 		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 		noCheckpointSaved = false;
-		imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestInput()).getAbsolutePath(),
-				toImg(input));
-		imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestOutput()).getAbsolutePath(),
-				toImg(output));
+		if(input != null && output != null) {
+			imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestInput()).getAbsolutePath(),
+					toImg(input));
+			imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestOutput()).getAbsolutePath(),
+					toImg(output));
+		}
 	}
 
 	private Img<?> toImg(RandomAccessibleInterval<FloatType> input) {
