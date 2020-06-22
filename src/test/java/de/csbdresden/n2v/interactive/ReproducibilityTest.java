@@ -1,25 +1,29 @@
 package de.csbdresden.n2v.interactive;
 
-import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.predict.N2VPrediction;
+import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
+import de.csbdresden.n2v.train.TrainUtils;
+import io.scif.MissingLibraryException;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooService;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.scijava.log.LogLevel;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class ReproducibilityTest<T extends RealType<T>> {
 
@@ -27,7 +31,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 	private ImageJ ij;
 	private double minMaxDif;
 
-	private void run(String[] args) throws IOException {
+	private void run(String[] args) throws IOException, ExecutionException {
 		ij = new ImageJ();
 		ij.launch(args);
 		System.out.println(ij.app().getApp().getBaseDirectory());
@@ -55,14 +59,15 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		predictionData.clear();
 
 		N2VTraining training = new N2VTraining(ij.context());
-		training.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-on-random.zip",
+//		training.init("/home/random/Development/imagej/project/CSBDeep/n2v-trained-on-random.zip",
+		training.init(
 				new N2VConfig()
 						.setTrainDimensions(2)
-						.setNumEpochs(200)
-						.setStepsPerEpoch(400)
+						.setNumEpochs(1)
+						.setStepsPerEpoch(1)
 						.setBatchSize(64)
-						.setPatchDimLength(180)
-						.setPatchDimLength(60)
+						.setPatchShape(180)
+						.setPatchShape(60)
 						.setNeighborhoodRadius(2));
 		training.input().addTrainingData(trainImg);
 		training.input().addValidationData(validateImg);
@@ -79,7 +84,8 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		prediction.setMean(training.output().getMean());
 		prediction.setStdDev(training.output().getStdDev());
 		try {
-			prediction.setModelFile(training.output().exportLatestTrainedModel());
+			File model = training.output().exportLatestTrainedModel();
+			prediction.setTrainedModel(training.context().service(ModelZooService.class).open(model));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -88,7 +94,13 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		ij.log().setLevel(LogLevel.NONE);
 		for (Pair<Img, Img> pair : testData) {
 			Img<T> networkInput = pair.getLeft();
-			RandomAccessibleInterval<FloatType> output = prediction.predictPadded(ij.op().convert().float32(networkInput));
+			Img<FloatType> input = ij.op().convert().float32(networkInput);
+			RandomAccessibleInterval<FloatType> output = null;
+			try {
+				output = prediction.predictPadded(TrainUtils.copy(input), "XY");
+			} catch (FileNotFoundException | MissingLibraryException e) {
+				e.printStackTrace();
+			}
 //			System.out.println("mean gt   : " + ij.op().stats().mean(pair.getRight()).getRealDouble());
 //			System.out.println("stdDev gt : " + ij.op().stats().stdDev(pair.getRight()));
 //			System.out.println("mean out  : " + ij.op().stats().mean(Views.iterable(output)));
@@ -115,7 +127,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		return 20.*Math.log10(minMaxDif) - 10*Math.log10(mse);
 	}
 
-	public static void main(String...args) throws IOException {
+	public static void main(String...args) throws IOException, ExecutionException {
 		new ReproducibilityTest().run(args);
 	}
 }

@@ -26,13 +26,18 @@ public class PreviewHandler {
 	private RandomAccessibleInterval<FloatType> splitImage;
 	private List<RandomAccessibleInterval<FloatType>> historyImages;
 
+	private RandomAccessibleInterval<FloatType> singleValidationInputImage;
+	private RandomAccessibleInterval<FloatType> singleValidationOutputImage;
+
 	public PreviewHandler(Context context, int trainDimensions) {
 		context.inject(this);
 		this.trainDimensions = trainDimensions;
 	}
 
-	public void update(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
-		updateSplitImage(in, out);
+	public void update(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isHeadless) {
+		singleValidationInputImage = Views.hyperSlice(in, in.numDimensions()-2, 0);
+		singleValidationOutputImage = Views.hyperSlice(out, out.numDimensions()-2, 0);
+		if(!isHeadless) updateSplitImage(in, out);
 //		updateHistoryImage(out);
 	}
 
@@ -104,4 +109,11 @@ public class PreviewHandler {
 		}
 	}
 
+	public RandomAccessibleInterval<FloatType> getExampleOutput() {
+		return singleValidationOutputImage;
+	}
+
+	public RandomAccessibleInterval<FloatType> getExampleInput() {
+		return singleValidationInputImage;
+	}
 }

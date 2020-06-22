@@ -1,6 +1,7 @@
 package de.csbdresden.n2v.command;
 
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooArchive;
 import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
@@ -22,7 +23,7 @@ public class TestCommands {
 	public void testTrainPredict2D() throws ExecutionException, InterruptedException {
 		ImageJ ij = new ImageJ();
 		ij.ui().setHeadless(true);
-		Img<FloatType> input = ij.op().create().img(new FinalDimensions(100, 100), new FloatType());
+		Img<FloatType> input = ij.op().create().img(new FinalDimensions(200, 200), new FloatType());
 		Random random = new Random();
 		input.forEach(pix -> pix.set(random.nextFloat()));
 
@@ -32,18 +33,17 @@ public class TestCommands {
 				"numEpochs", 2,
 				"numStepsPerEpoch", 3,
 				"batchSize", 5,
-				"batchDimLength", 40,
-				"patchDimLength", 32,
+				"patchShape", 32,
 				"neighborhoodRadius", 2).get();
 
-		File latestExport = new File((String) res.getOutput("latestTrainedModelPath"));
-		File bestExport = new File((String) res.getOutput("bestTrainedModelPath"));
+		ModelZooArchive latestExport = (ModelZooArchive) res.getOutput("latestTrainedModel");
+		ModelZooArchive bestExport = (ModelZooArchive) res.getOutput("bestTrainedModel");
 		RandomAccessibleInterval output = (RandomAccessibleInterval) res.getOutput("output");
 
 		assertNotNull(latestExport);
-		assertTrue(latestExport.exists());
+		assertTrue(new File(latestExport.getSource().getURI()).exists());
 		assertNotNull(bestExport);
-		assertTrue(bestExport.exists());
+		assertTrue(new File(bestExport.getSource().getURI()).exists());
 		assertNotNull(output);
 		assertEquals(2, output.numDimensions());
 		assertEquals(input.dimension(0), output.dimension(0));
@@ -56,7 +56,7 @@ public class TestCommands {
 	public void testTrainPredictSeparately2D() throws ExecutionException, InterruptedException {
 		ImageJ ij = new ImageJ();
 		ij.ui().setHeadless(true);
-		Img<FloatType> input = ij.op().create().img(new FinalDimensions(100, 100), new FloatType());
+		Img<FloatType> input = ij.op().create().img(new FinalDimensions(200, 200), new FloatType());
 		Random random = new Random();
 		input.forEach(pix -> pix.set(random.nextFloat()));
 
@@ -66,21 +66,21 @@ public class TestCommands {
 				"numEpochs", 2,
 				"numStepsPerEpoch", 3,
 				"batchSize", 5,
-				"batchDimLength", 40,
-				"patchDimLength", 32,
+				"patchShape", 32,
 				"neighborhoodRadius", 2).get();
 
-		File latestExport = new File((String) res.getOutput("latestTrainedModelPath"));
-		File bestExport = new File((String) res.getOutput("bestTrainedModelPath"));
+		ModelZooArchive latestExport = (ModelZooArchive) res.getOutput("latestTrainedModel");
+		ModelZooArchive bestExport = (ModelZooArchive) res.getOutput("bestTrainedModel");
 
 		assertNotNull(latestExport);
-		assertTrue(latestExport.exists());
+		File latestExportFile = new File(latestExport.getSource().getURI());
+		assertTrue(latestExportFile.exists());
 		assertNotNull(bestExport);
-		assertTrue(bestExport.exists());
+		assertTrue(new File(bestExport.getSource().getURI()).exists());
 
 		res = ij.command().run(N2VPredictCommand.class, false,
 				"input", input,
-				"modelFile", latestExport).get();
+				"modelFile", latestExportFile).get();
 
 		RandomAccessibleInterval output = (RandomAccessibleInterval) res.getOutput("output");
 		assertNotNull(output);

@@ -5,7 +5,6 @@ import net.imagej.ImageJ;
 import net.imglib2.FinalDimensions;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
-import org.junit.Test;
 
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -31,7 +30,7 @@ public class OneClickTest {
 					"mode3D", false,
 					"batchSize", 128,
 					"batchDimLength", 128,
-					"patchDimLength", 64).get();
+					"patchShape", 64).get();
 		}
 	}
 }

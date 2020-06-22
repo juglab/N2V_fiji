@@ -1,14 +1,15 @@
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.predict.N2VPrediction;
+import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
+import io.scif.MissingLibraryException;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooArchive;
+import net.imagej.modelzoo.ModelZooService;
 import net.imagej.ops.OpService;
-import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.Cancelable;
 import org.scijava.Context;
@@ -19,8 +20,10 @@ import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.widget.NumberWidget;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -28,7 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train + predict" )
+@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>N2V train + predict" )
 public class N2VTrainPredictCommand implements Command, Cancelable {
 
 	@Parameter(label = "Image used for training")
@@ -36,6 +39,9 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 	@Parameter(label = "Image to denoise after training")
 	private RandomAccessibleInterval< FloatType > prediction;
+
+	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)")
+	private String axes = "XY";
 
 	//TODO make these parameters work
 //	@Parameter(label = "Training mode", choices = {"start new training", "continue training"})
@@ -67,13 +73,10 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 	private int numStepsPerEpoch = 200;
 
 	@Parameter(label = "Batch size per step")
-	private int batchSize = 180;
+	private int batchSize = 64;
 
-	@Parameter(label = "Dimension length of batch")
-	private int batchDimLength = 180;
-
-	@Parameter(label = "Dimension length of patch")
-	private int patchDimLength = 60;
+	@Parameter(label = "Patch shape", min = "16", max = "512", stepSize = "16", style= NumberWidget.SLIDER_STYLE)
+	private int patchShape = 64;
 
 	@Parameter(label = "Neighborhood radius")
 	private int neighborhoodRadius = 5;
@@ -82,10 +85,10 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 	private RandomAccessibleInterval< FloatType > output;
 
 	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
-	private String latestTrainedModelPath;
+	private ModelZooArchive latestTrainedModel;
 
 	@Parameter(type = ItemIO.OUTPUT, label = "model with lowest validation loss")
-	private String bestTrainedModelPath;
+	private ModelZooArchive bestTrainedModel;
 
 	@Parameter
 	private CommandService commandService;
@@ -98,6 +101,9 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 	@Parameter
 	private LogService logService;
+
+	@Parameter
+	private ModelZooService modelZooService;
 
 	private boolean canceled = false;
 
@@ -139,8 +145,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 				.setNumEpochs(numEpochs)
 				.setStepsPerEpoch(numStepsPerEpoch)
 				.setBatchSize(batchSize)
-				.setBatchDimLength(batchDimLength)
-				.setPatchDimLength(patchDimLength)
+				.setPatchShape(patchShape)
 				.setNeighborhoodRadius(neighborhoodRadius));
 		if(n2v.getDialog() != null) n2v.getDialog().addTask( "Prediction" );
 
@@ -163,9 +168,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 		try {
 			File savedModel = n2v.output().exportLatestTrainedModel();
 			if(savedModel == null) return;
-			latestTrainedModelPath = savedModel.getAbsolutePath();
-			savedModel = n2v.output().exportBestTrainedModel();
-			bestTrainedModelPath = savedModel.getAbsolutePath();
+			openSavedModels(n2v, savedModel);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -174,15 +177,27 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 		if(n2v.getDialog() != null) n2v.getDialog().setTaskStart(2);
 
-		if(latestTrainedModelPath == null) return;
+		if(latestTrainedModel == null) return;
 
 		N2VPrediction prediction = new N2VPrediction(context);
-		prediction.setModelFile(new File(latestTrainedModelPath));
-		this.output = prediction.predictPadded(this.prediction);
+		prediction.setTrainedModel(latestTrainedModel);
+		try {
+			this.output = prediction.predictPadded(this.prediction, axes);
+		} catch (FileNotFoundException | MissingLibraryException e) {
+			e.printStackTrace();
+			n2v.getDialog().dispose();
+		}
 
 		if(n2v.getDialog() != null) n2v.getDialog().setTaskDone(2);
 
 	}
+
+	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
+		latestTrainedModel = modelZooService.open(savedModel);
+		savedModel = training.output().exportBestTrainedModel();
+		bestTrainedModel = modelZooService.open(savedModel);
+	}
+
 
 	private void cancel() {
 		cancel("");

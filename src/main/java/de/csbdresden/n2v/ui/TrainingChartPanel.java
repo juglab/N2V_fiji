@@ -1,22 +1,10 @@
 package de.csbdresden.n2v.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.util.Collections;
-import java.util.List;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTitleAnnotation;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.block.BlockBorder;
 import org.jfree.chart.plot.XYPlot;
@@ -30,7 +18,14 @@ import org.jfree.data.xy.VectorDataItem;
 import org.jfree.data.xy.VectorSeries;
 import org.jfree.data.xy.VectorSeriesCollection;
 
-public class N2VChartPanel extends JPanel {
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.net.URL;
+import java.util.Collections;
+import java.util.List;
+
+public class TrainingChartPanel extends JPanel {
 
 	private final static int DEFAULT_CHART_HEIGHT = 400;
 	private final static int DEFAULT_CHART_WIDTH = 600;
@@ -47,11 +42,11 @@ public class N2VChartPanel extends JPanel {
 	private VectorSeriesCollection data;
 	private VectorSeries averageLossData;
 	private VectorSeries validationLossData;
-	private de.csbdresden.n2v.ui.TrainingProgressPanel progressPanel;
+	private TrainingProgressPanel progressPanel;
 
-	private final static ImageIcon waitingIcon = new ImageIcon( N2VProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
+	private final static ImageIcon waitingIcon = new ImageIcon( TrainingProgress.class.getClassLoader().getResource( "hard-workout.gif" ) );
 
-	public N2VChartPanel( int nEpochs, int nEpochSteps ) {
+	public TrainingChartPanel(int nEpochs, int nEpochSteps ) {
 
 		setLayout( new BorderLayout() );
 		setBackground( Color.WHITE );
@@ -161,4 +156,7 @@ public class N2VChartPanel extends JPanel {
 
 	}
 
+	public void setWaitingIcon(URL iconUrl, float iconScale, int iconAlignment, int iconOffsetX, int iconOffsetY) {
+		waitLayer.setWaitingIcon(iconUrl, iconScale, iconAlignment, iconOffsetX, iconOffsetY);
+	}
 }

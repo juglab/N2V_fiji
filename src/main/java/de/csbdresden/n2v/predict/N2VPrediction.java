@@ -1,34 +1,33 @@
 package de.csbdresden.n2v.predict;
 
-import de.csbdresden.csbdeep.commands.GenericNetwork;
-import de.csbdresden.n2v.train.ModelSpecification;
-import de.csbdresden.n2v.util.N2VUtils;
-import net.imagej.Dataset;
-import net.imagej.DefaultDataset;
-import net.imagej.ImgPlus;
+import de.csbdresden.n2v.train.N2VModelSpecification;
+import de.csbdresden.n2v.train.TrainUtils;
+import io.scif.MissingLibraryException;
+import net.imagej.modelzoo.ModelZooArchive;
+import net.imagej.modelzoo.consumer.DefaultSingleImagePrediction;
+import net.imagej.modelzoo.consumer.ModelZooPrediction;
+import net.imagej.modelzoo.consumer.model.InputImageNode;
+import net.imagej.modelzoo.consumer.model.ModelZooAxis;
+import net.imagej.modelzoo.consumer.model.ModelZooModel;
 import net.imagej.ops.OpService;
 import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.scijava.Context;
-import org.scijava.command.CommandModule;
 import org.scijava.command.CommandService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
+import org.scijava.plugin.Plugin;
 
-import java.io.File;
-import java.util.concurrent.ExecutionException;
+import java.io.FileNotFoundException;
 
-public class N2VPrediction {
+@Plugin(type = ModelZooPrediction.class, name = "n2v")
+public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, FloatType> {
 
-	private File zippedModel;
 	private FloatType mean;
 	private FloatType stdDev;
-	private int trainDimensions;
-	private boolean showDialog = false;
 
 	@Parameter
 	private OpService opService;
@@ -40,12 +39,13 @@ public class N2VPrediction {
 	private Context context;
 
 	public N2VPrediction(Context context) {
-		context.inject(this);
+		super(context);
 	}
 
-	public void setModelFile(File zippedModel) {
-		this.zippedModel = zippedModel;
-		ModelSpecification.readConfig(this, zippedModel);
+	@Override
+	public void setTrainedModel(ModelZooArchive trainedModel) {
+		super.setTrainedModel(trainedModel);
+		N2VModelSpecification.setFromSpecification(this, trainedModel.getSpecification());
 	}
 
 	public void setMean(FloatType mean) {
@@ -56,59 +56,65 @@ public class N2VPrediction {
 		this.stdDev = stdDev;
 	}
 
-	public void setTrainDimensions(int numDimensions) {
-		this.trainDimensions = numDimensions;
+	@Override
+	public void setInput(String name, RandomAccessibleInterval<?> value, String axes) {
+		preprocessInput(value, mean, stdDev);
+		super.setInput(name, value, axes);
 	}
 
-	public void setShowDialog(boolean showDialog) {
-		this.showDialog = showDialog;
-	}
 
-	public RandomAccessibleInterval predict(RandomAccessibleInterval input) {
-		Img prediction = preprocess(input, mean, stdDev);
-		Dataset inputDataset = new DefaultDataset(context, new ImgPlus(prediction));
-		try {
-			final CommandModule module = commandService.run(
-					GenericNetwork.class, false,
-					"input", inputDataset,
-					"normalizeInput", false,
-					"modelFile", zippedModel.getAbsolutePath(),
-					"blockMultiple", 8,
-					"nTiles", 8,
-					"overlap", 32,
-					"showProgressDialog", showDialog).get();
-			if(module.isCanceled()) return null;
-			RandomAccessibleInterval<FloatType> output = (RandomAccessibleInterval<FloatType>) module.getOutput("output");
-			if(output == null) return null;
-			postprocess(output, mean, stdDev);
-			return output;
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
+	@Override
+	public void run() throws OutOfMemoryError, FileNotFoundException, MissingLibraryException {
+		//		super.run();
+		ModelZooModel model = loadModel(getTrainedModel());
+		if (model != null && model.isInitialized() && this.inputValidationAndMapping(model)) {
+			increaseHalo(model);
+			try {
+				this.preprocessing(model);
+				this.executePrediction(model);
+				this.postprocessing(model);
+			} finally {
+				model.dispose();
+			}
+
+		} else {
+			context.service(LogService.class).error("Model does not exist or cannot be loaded. Exiting.");
+			if (model != null) {
+				model.dispose();
+			}
+
 		}
-		return null;
+		postprocessOutput(getOutput(), mean, stdDev);
+
 	}
 
-	private void postprocess(RandomAccessibleInterval<FloatType> output, FloatType mean, FloatType stdDev) {
-		N2VUtils.denormalizeInplace(output, mean, stdDev, opService);
-	}
-
-	public Img preprocess(RandomAccessibleInterval input, FloatType mean, FloatType stdDev) {
-		return (Img) N2VUtils.normalize(input, mean, stdDev, opService);
-	}
-
-	public RandomAccessibleInterval<FloatType> predictPadded(RandomAccessibleInterval<FloatType> input) {
-		int padding = 32;
-		FinalInterval bigger = new FinalInterval(input);
-		for (int i = 0; i < trainDimensions; i++) {
-			bigger = Intervals.expand(bigger, padding, i);
+	private void increaseHalo(ModelZooModel model) {
+		//TODO HACK to make tiling work. without increasing the halo the tiles become visible. something's calculated wrong at the border.
+		InputImageNode<?> inputNode = model.getInputNodes().get(0);
+		for (ModelZooAxis axis : inputNode.getAxes()) {
+			axis.setHalo(axis.getHalo()+32);
 		}
-		IntervalView<FloatType> paddedInput = Views.zeroMin(Views.interval(Views.extendZero(input), bigger));
-		RandomAccessibleInterval<FloatType> output = predict(paddedInput);
-		if(output == null) return null;
-		FinalInterval smaller = new FinalInterval(output);
-		for (int i = 0; i < trainDimensions; i++) {
-			smaller = Intervals.expand(smaller, -padding, i);
-		}
-		return Views.zeroMin(Views.interval(output, smaller));
+	}
+
+	private void preprocessInput(RandomAccessibleInterval input, FloatType mean, FloatType stdDev) {
+		TrainUtils.normalizeInplace(input, mean, stdDev);
+	}
+
+	private void postprocessOutput(RandomAccessibleInterval<FloatType> output, FloatType mean, FloatType stdDev) {
+		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
+	}
+
+	private IntervalView<FloatType> getFirstChannel(RandomAccessibleInterval<FloatType> output) {
+		long[] dims = new long[output.numDimensions()];
+		output.dimensions(dims);
+		dims[dims.length-1] = 1;
+		return Views.interval(output, new FinalInterval(dims));
+	}
+
+	public RandomAccessibleInterval<FloatType> predictPadded(RandomAccessibleInterval<FloatType> input, String axes) throws FileNotFoundException, MissingLibraryException {
+		setInput(input, axes);
+		run();
+		if(getOutput() == null) return null;
+		return getOutput();
 	}
 }

@@ -3,6 +3,8 @@ package de.csbdresden.n2v.command;
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooArchive;
+import net.imagej.modelzoo.ModelZooService;
 import org.scijava.Cancelable;
 import org.scijava.Context;
 import org.scijava.ItemIO;
@@ -10,13 +12,14 @@ import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.widget.NumberWidget;
 
 import java.io.File;
 import java.io.IOException;
 
 import static org.scijava.widget.FileWidget.DIRECTORY_STYLE;
 
-@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>train on folder" )
+@Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>N2V train on folder" )
 public class N2VTrainOnFolderCommand implements Command, Cancelable {
 
 	@Parameter(label = "Folder containing images used for training", style = DIRECTORY_STYLE)
@@ -40,23 +43,23 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	@Parameter(label = "Batch size per step")
 	private int batchSize = 180;
 
-	@Parameter(label = "Dimension length of batch")
-	private int batchDimLength = 180;
-
-	@Parameter(label = "Dimension length of patch")
-	private int patchDimLength = 60;
+	@Parameter(label = "Patch shape", min = "16", max = "512", stepSize = "16", style= NumberWidget.SLIDER_STYLE)
+	private int patchShape = 64;
 
 	@Parameter(label = "Neighborhood radius")
 	private int neighborhoodRadius = 5;
 
 	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
-	private String latestTrainedModelPath;
+	private ModelZooArchive latestTrainedModel;
 
 	@Parameter(type = ItemIO.OUTPUT, label = "model with lowest validation loss")
-	private String bestTrainedModelPath;
+	private ModelZooArchive bestTrainedModel;
 
 	@Parameter
 	private Context context;
+
+	@Parameter
+	private ModelZooService modelZooService;
 
 	private boolean canceled;
 
@@ -68,8 +71,7 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 				.setNumEpochs(numEpochs)
 				.setStepsPerEpoch(numStepsPerEpoch)
 				.setBatchSize(batchSize)
-				.setBatchDimLength(batchDimLength)
-				.setPatchDimLength(patchDimLength)
+				.setPatchShape(patchShape)
 				.setNeighborhoodRadius(neighborhoodRadius));
 		try {
 			if(training.equals(validation)) {
@@ -89,12 +91,16 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 		try {
 			File savedModel = n2v.output().exportLatestTrainedModel();
 			if(savedModel == null) return;
-			latestTrainedModelPath = savedModel.getAbsolutePath();
-			savedModel = n2v.output().exportBestTrainedModel();
-			bestTrainedModelPath = savedModel.getAbsolutePath();
+			openSavedModels(n2v, savedModel);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
+		latestTrainedModel = modelZooService.open(savedModel);
+		savedModel = training.output().exportBestTrainedModel();
+		bestTrainedModel = modelZooService.open(savedModel);
 	}
 
 	@Override

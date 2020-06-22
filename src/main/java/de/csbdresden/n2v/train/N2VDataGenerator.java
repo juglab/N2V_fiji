@@ -136,16 +136,13 @@ public class N2VDataGenerator {
 		batches.addAll(augmented);
 	}
 
-	static List< RandomAccessibleInterval<FloatType> > createTiles(RandomAccessibleInterval< FloatType > inputRAI, int trainDimensions, long batchDimLength, Logger logger ) {
+	static List< RandomAccessibleInterval<FloatType> > createTiles(RandomAccessibleInterval< FloatType > inputRAI, int trainDimensions, long patchShape, Logger logger ) {
 
-		long maxBatchDimPossible = getSmallestInputDim(inputRAI, trainDimensions);
+		long superPatchShape = getSmallestInputDim(inputRAI, trainDimensions);
+		superPatchShape = Math.min(superPatchShape, patchShape*2);
 
-		maxBatchDimPossible = Math.min(batchDimLength, maxBatchDimPossible);
-		if(maxBatchDimPossible < batchDimLength) {
-			logger.warn("Cannot create batches of edge length " + batchDimLength + ", max possible length is " + maxBatchDimPossible);
-		}
 		long[] batchShapeData = new long[trainDimensions];
-		Arrays.fill(batchShapeData, maxBatchDimPossible);
+		Arrays.fill(batchShapeData, superPatchShape);
 		FinalInterval batchShape = new FinalInterval(batchShapeData);
 //		logger.info( "Creating tiles of size " + Arrays.toString(Intervals.dimensionsAsIntArray(batchShape)) + ".." );
 		List< RandomAccessibleInterval< FloatType > > data = new ArrayList<>();

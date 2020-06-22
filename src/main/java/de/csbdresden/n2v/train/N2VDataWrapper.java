@@ -115,60 +115,61 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 	}
 
 	static <T extends RealType<T> & NativeType<T>> void manipulateX(long boxSize, Dimensions shape, RandomAccessibleInterval<T> patchX, RandomAccessibleInterval<T> patchY, long n_chan, ValueManipulatorConsumer<T> manipulator) {
-		int c = 0;
+		int channel = 0;
 		List<Point> coords = null;
 		if(shape.numDimensions() == 2) coords = get_stratified_coords2D(boxSize, shape);
 		if(shape.numDimensions() == 3) coords = get_stratified_coords3D(boxSize, shape);
 
-		double[] x_val = new double[coords.size()];
-		double[] originalValue = new double[coords.size()];
 		RandomAccess<T> batchXRA = patchX.randomAccess();
 		RandomAccess<T> batchYRA = patchY.randomAccess();
 		for (int k = 0; k < coords.size(); k++) {
 
 			Point point = coords.get(k);
-			long[] oldPos = new long[shape.numDimensions()+1];
-			for (int i = 0; i < shape.numDimensions(); i++) {
-				oldPos[i] = point.getLongPosition(i);
-			}
-			oldPos[shape.numDimensions()] = c;
 
-			batchXRA.setPosition(oldPos);
-			originalValue[k] = batchXRA.get().getRealDouble();
-
-			IntervalView<T> XInterval = Views.hyperSlice(patchX, shape.numDimensions(), c);
-			XInterval = Views.addDimension(XInterval, 0, 0);
-			x_val[k] = value_manipulate(manipulator, XInterval, point);
-		}
-
-		for (int k = 0; k < originalValue.length; k++) {
-
-			Point point = coords.get(k);
 			long[] channel1Pos = new long[patchX.numDimensions()];
 			long[] channel2Pos = new long[patchX.numDimensions()];
 			for (int i = 0; i < point.numDimensions(); i++) {
 				channel1Pos[i] = point.getLongPosition(i);
 				channel2Pos[i] = point.getLongPosition(i);
 			}
-			channel1Pos[channel1Pos.length-1] = c;
-			channel2Pos[channel1Pos.length-1] = c+n_chan;
-
-			batchYRA.setPosition(channel1Pos);
-			batchYRA.get().setReal(originalValue[k]);
+			channel1Pos[channel1Pos.length-1] = channel;
+			channel2Pos[channel1Pos.length-1] = channel+n_chan;
 
 			batchYRA.setPosition(channel2Pos);
 			batchYRA.get().setOne();
 
+			double originalValue = getValue(channel, batchXRA, point);
+			batchYRA.setPosition(channel1Pos);
+			batchYRA.get().setReal(originalValue);
+
+			double manipulatedValue = getManipulatedValue(patchX, manipulator, channel, point);
 			batchXRA.setPosition(channel1Pos);
-			batchXRA.get().setReal(x_val[k]);
+			batchXRA.get().setReal(manipulatedValue);
 		}
+	}
+
+	private static <T extends RealType<T> & NativeType<T>> double getManipulatedValue(RandomAccessibleInterval<T> patch, ValueManipulatorConsumer<T> manipulator, int channel, Point position) {
+		IntervalView<T> XInterval = Views.hyperSlice(patch, position.numDimensions(), channel);
+		XInterval = Views.addDimension(XInterval, 0, 0);
+		return value_manipulate(manipulator, XInterval, position);
+	}
+
+	private static <T extends RealType<T> & NativeType<T>> double getValue(int channel, RandomAccess<T> batch, Point position) {
+		long[] oldPos = new long[position.numDimensions()+1];
+		for (int i = 0; i < position.numDimensions(); i++) {
+			oldPos[i] = position.getLongPosition(i);
+		}
+		oldPos[position.numDimensions()] = channel;
+
+		batch.setPosition(oldPos);
+		return batch.get().getRealDouble();
 	}
 
 	private static List<Point> get_stratified_coords3D(long box_size, Dimensions shape) {
 		List<Point> coords = new ArrayList<>();
-		int box_count_x = (int) Math.ceil(shape.dimension(0) / box_size);
-		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
-		int box_count_z = (int) Math.ceil(shape.dimension(2) / box_size);
+		int box_count_x = (int) Math.ceil(shape.dimension(0) / (float)box_size);
+		int box_count_y = (int) Math.ceil(shape.dimension(1) / (float)box_size);
+		int box_count_z = (int) Math.ceil(shape.dimension(2) / (float)box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
 				for (int k = 0; k < box_count_z; k++) {
@@ -190,11 +191,11 @@ public class N2VDataWrapper<T extends RealType<T> & NativeType<T>> {
 
 	private static List<Point> get_stratified_coords2D(long box_size, Dimensions shape) {
 		List<Point> coords = new ArrayList<>();
-		int box_count_x = (int) Math.ceil(shape.dimension(0) / box_size);
-		int box_count_y = (int) Math.ceil(shape.dimension(1) / box_size);
+		int box_count_x = (int) Math.ceil(shape.dimension(0) / (float)box_size);
+		int box_count_y = (int) Math.ceil(shape.dimension(1) / (float)box_size);
 		for (int i = 0; i < box_count_x; i++) {
 			for (int j = 0; j < box_count_y; j++) {
-				Point p = new Point((long)(Math.random() * box_size), (long)(Math.random() * box_size), 0);
+				Point p = new Point((long)(Math.random() * box_size), (long)(Math.random() * box_size));
 //                y, x = next(coord_gen)
 				p.setPosition(i * box_size + p.getIntPosition(0), 0);
 				p.setPosition(j * box_size + p.getIntPosition(1), 1);
