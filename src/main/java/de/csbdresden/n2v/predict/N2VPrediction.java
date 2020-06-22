@@ -120,7 +120,7 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 		//TODO HACK to make tiling work. without increasing the halo the tiles become visible. something's calculated wrong at the border.
 		InputImageNode<?> inputNode = model.getInputNodes().get(0);
 		for (ModelZooAxis axis : inputNode.getAxes()) {
-			axis.setHalo(axis.getHalo()+32);
+			if(axis.getHalo() > 1) axis.setHalo(axis.getHalo()+32);
 		}
 	}
 
