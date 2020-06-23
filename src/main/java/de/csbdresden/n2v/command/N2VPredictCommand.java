@@ -43,6 +43,7 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.ItemIO;
+import org.scijava.ItemVisibility;
 import org.scijava.command.CommandModule;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -54,7 +55,7 @@ import java.io.IOException;
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
 public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePredictionCommand {
 
-	@Parameter(label = "Trained model file (.zip)")
+	@Parameter(label = "Trained model file (bioimage.io.zip)")
 	private File modelFile;
 
 	@Parameter
@@ -62,6 +63,21 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 
 	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)")
 	private String axes = "XY";
+
+	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+	private String batchLabel = "<html><div style='font-weight: normal;text-align:right;'>You can predict one dimension independently per position (e.g. the channel).<br>Use B ( = batch) for this dimension.</div><br></html>";
+
+	@Parameter(label = "Batch size", required = false)
+	private int batchSize = 10;
+
+	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+	private String batchSizeLabel = "<html><div style='font-weight: normal;text-align:right;'>The batch size will only be used if a batch axis exists.<br>It can improve performance to process multiple batches at once (batch size > 1)</div><br></html>";
+
+	@Parameter(label = "Number of tiles (1 = no tiling)", required = false)
+	private int numTiles = 1;
+
+	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
+	private String numTilesLabel = "<html><div style='font-weight: normal;text-align:right;'>Increasing the tiling can help if the memory is insufficient to deal with the whole image at once.<br>Too many tiles decrease performance because an overlap has to be computed.</div><br></html>";
 
 	@Parameter( type = ItemIO.OUTPUT )
 	private Dataset output;
@@ -99,11 +115,15 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		prediction.setNumberOfTiles(numTiles);
+		prediction.setBatchSize(batchSize);
 //		prediction.setShowDialog(showProgressDialog);
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
 		converted = TrainUtils.copy(converted);
 		try {
-			output = datasetService.create(prediction.predictPadded(converted, axes));
+			RandomAccessibleInterval<FloatType> predictionResult = prediction.predictPadded(converted, axes);
+			if(predictionResult == null) return;
+			output = datasetService.create(predictionResult);
 		} catch (FileNotFoundException | MissingLibraryException e) {
 			e.printStackTrace();
 		}
@@ -133,9 +153,11 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 //			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
 
 			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
+			ij.ui().show(prediction);
 
-			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false,
-					"input", prediction, "modelFile", modelFile, "axes", "XYB" ).get();
+			CommandModule plugin = ij.command().run( N2VPredictCommand.class, true
+//					,"input", prediction, "modelFile", modelFile, "axes", "XYB"
+			).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else
 			System.out.println( "Cannot find training image " + predictionInput.getAbsolutePath() );

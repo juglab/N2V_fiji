@@ -85,10 +85,10 @@ public class N2VTrainCommand implements Command, Cancelable {
 	@Parameter(label = "Neighborhood radius")
 	private int neighborhoodRadius = 5;
 
-	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
+	@Parameter(type = ItemIO.OUTPUT, label = "Model from last training step")
 	private ModelZooArchive latestTrainedModel;
 
-	@Parameter(type = ItemIO.OUTPUT, label = "model with lowest validation loss")
+	@Parameter(type = ItemIO.OUTPUT, label = "Model with lowest validation loss")
 	private ModelZooArchive bestTrainedModel;
 
 	@Parameter

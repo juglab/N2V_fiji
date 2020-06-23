@@ -93,27 +93,17 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 
 	@Override
 	public void run() throws OutOfMemoryError, FileNotFoundException, MissingLibraryException {
-		//		super.run();
 		ModelZooModel model = loadModel(getTrainedModel());
-		if (model != null && model.isInitialized() && this.inputValidationAndMapping(model)) {
-			increaseHalo(model);
-			try {
-				this.preprocessing(model);
-				this.executePrediction(model);
-				this.postprocessing(model);
-			} finally {
-				model.dispose();
-			}
-
-		} else {
-			context.service(LogService.class).error("Model does not exist or cannot be loaded. Exiting.");
-			if (model != null) {
-				model.dispose();
-			}
-
+		if (!validateModel(model)) return;
+		increaseHalo(model);
+		try {
+			this.preprocessing(model);
+			this.executePrediction(model);
+			this.postprocessing(model);
+		} finally {
+			model.dispose();
 		}
 		postprocessOutput(getOutput(), mean, stdDev);
-
 	}
 
 	private void increaseHalo(ModelZooModel model) {
@@ -129,6 +119,7 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 	}
 
 	private void postprocessOutput(RandomAccessibleInterval<FloatType> output, FloatType mean, FloatType stdDev) {
+		if(output == null) return;
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
 
