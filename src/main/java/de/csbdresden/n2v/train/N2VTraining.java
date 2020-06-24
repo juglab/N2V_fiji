@@ -222,8 +222,6 @@ public class N2VTraining implements ModelZooTraining {
 			}
 
 			if (Thread.interrupted() || isCanceled()) return;
-			Operation opTrain = graph.operation( trainingTargetOpName );
-			if ( opTrain == null ) throw new RuntimeException( "Training op not found" );
 
 			output().initTensors(sess);
 
