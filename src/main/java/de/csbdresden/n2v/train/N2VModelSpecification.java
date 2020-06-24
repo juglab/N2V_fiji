@@ -175,10 +175,18 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		if(predictionPreprocessing.size() > 0) {
 			Map<String, Object> kwargs = predictionPreprocessing.get(0).getKwargs();
 			if(kwargs != null) {
-				List<? extends Number> meanObj = (List<? extends Number>) kwargs.get(idMean);
-				if(meanObj != null && meanObj.size() > 0) mean = meanObj.get(0).doubleValue();
-				List<? extends Number> stdDevObj = (List<? extends Number>) kwargs.get(idStdDev);
-				if(stdDevObj != null && stdDevObj.size() > 0) stdDev = stdDevObj.get(0).doubleValue();
+				if(Double.class.isAssignableFrom(kwargs.get(idMean).getClass())) {
+					mean = (double) kwargs.get(idMean);
+				} else {
+					List<? extends Number> meanObj = (List<? extends Number>) kwargs.get(idMean);
+					if(meanObj != null && meanObj.size() > 0) mean = meanObj.get(0).doubleValue();
+				}
+				if(Double.class.isAssignableFrom(kwargs.get(idStdDev).getClass())) {
+					stdDev = (double) kwargs.get(idStdDev);
+				} else {
+					List<? extends Number> stdDevObj = (List<? extends Number>) kwargs.get(idStdDev);
+					if(stdDevObj != null && stdDevObj.size() > 0) stdDev = stdDevObj.get(0).doubleValue();
+				}
 			}
 		}
 
