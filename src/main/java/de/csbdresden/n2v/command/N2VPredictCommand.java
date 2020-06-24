@@ -34,6 +34,8 @@ import io.scif.MissingLibraryException;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooArchive;
+import net.imagej.modelzoo.ModelZooService;
 import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
@@ -43,8 +45,8 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.ItemIO;
-import org.scijava.ItemVisibility;
 import org.scijava.command.CommandModule;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -61,29 +63,20 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 	@Parameter
 	private RandomAccessibleInterval< T > input;
 
-	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)")
+	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)", description = "You can predict one dimension independently per position. Use B ( = batch) for this dimension.")
 	private String axes = "XY";
 
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String batchLabel = "<html><div style='font-weight: normal;text-align:right;'>You can predict one dimension independently per position (e.g. the channel).<br>Use B ( = batch) for this dimension.</div><br></html>";
-
-	@Parameter(label = "Batch size", required = false)
+	@Parameter(label = "Batch size", required = false, description = "<html>The batch size will only be used if a batch axis exists.<br>It can improve performance to process multiple batches at once (batch size > 1)")
 	private int batchSize = 10;
 
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String batchSizeLabel = "<html><div style='font-weight: normal;text-align:right;'>The batch size will only be used if a batch axis exists.<br>It can improve performance to process multiple batches at once (batch size > 1)</div><br></html>";
-
-	@Parameter(label = "Number of tiles (1 = no tiling)", required = false)
-	private int numTiles = 1;
-
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String numTilesLabel = "<html><div style='font-weight: normal;text-align:right;'>Increasing the tiling can help if the memory is insufficient to deal with the whole image at once.<br>Too many tiles decrease performance because an overlap has to be computed.</div><br></html>";
+	@Parameter(label = "Number of tiles (1 = no tiling)", required = false, description = "<html>Increasing the tiling can help if the memory is insufficient to deal with the whole image at once.<br>Too many tiles decrease performance because an overlap has to be computed.")
+	private int numTiles = 8;
 
 	@Parameter( type = ItemIO.OUTPUT )
 	private Dataset output;
 
-//	@Parameter(required = false)
-//	private boolean showProgressDialog = true;
+	@Parameter(required = false)
+	private boolean showProgressDialog = true;
 
 	@Parameter
 	private Context context;
@@ -93,6 +86,12 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 
 	@Parameter
 	private DatasetService datasetService;
+
+	@Parameter
+	private ModelZooService modelZooService;
+
+	@Parameter
+	private LogService logService;
 
 //	@Parameter
 //	private ImageDisplayService imageDisplayService;
@@ -111,7 +110,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 //		}
 		N2VPrediction prediction = new N2VPrediction(context);
 		try {
-			prediction.setTrainedModel(modelFile.getAbsolutePath());
+			setTrainedModel(prediction, modelFile.getAbsolutePath());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -135,6 +134,26 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 //		}
 	}
 
+	private void setTrainedModel(N2VPrediction prediction, String trainedModel) throws IOException {
+		ModelZooArchive model = modelZooService.open(trainedModel);
+		if(model.getSpecification().getFormatVersion().equals("0.1.0")) {
+			logService.error("Deprecated model format - please call Plugins > CSBDeep > N2V > Upgrade N2V model.");
+			return;
+		}
+		if(isMultiChannel()) {
+			logService.error("Can't predict multichannel images. This will be implemented in the future.");
+			return;
+		}
+		prediction.setTrainedModel(model);
+	}
+
+	private boolean isMultiChannel() {
+		int channelIndex = axes.indexOf("C");
+		if(channelIndex < 0) return false;
+		if(input.numDimensions() <= channelIndex) return false;
+		return input.dimension(channelIndex) > 1;
+	}
+
 	public static void main( final String... args ) throws Exception {
 
 		final ImageJ ij = new ImageJ();
@@ -143,9 +162,9 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 
 //		ij.log().setLevel(LogLevel.TRACE);
 
-		File modelFile = new File("/home/random/Documents/2020-06 NEUBIAS/models/n2v.bioimage.io.zip");
+		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/new-n2v-sem-demo.zip");
 
-		final File predictionInput = new File( "/home/random/Development/python/n2v/examples/2D/denoising2D_BSD68/data/BSD68_reproducibility_data/val/DCNN400_validation_gaussian25.tif" );
+		final File predictionInput = new File( "/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/input.tif" );
 
 		if ( predictionInput.exists() ) {
 			RandomAccessibleInterval _input = ( RandomAccessibleInterval ) ij.io().open( predictionInput.getAbsolutePath() );
@@ -155,8 +174,8 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
 			ij.ui().show(prediction);
 
-			CommandModule plugin = ij.command().run( N2VPredictCommand.class, true
-//					,"input", prediction, "modelFile", modelFile, "axes", "XYB"
+			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false
+					,"input", prediction, "modelFile", modelFile, "axes", "XYB"
 			).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else

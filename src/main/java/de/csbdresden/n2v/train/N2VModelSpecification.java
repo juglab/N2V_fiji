@@ -113,7 +113,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		setTrainingKwargs(trainingKwargs);
 	}
 
-	private void setInputsOutputs(N2VConfig config) {
+	public void setInputsOutputs(N2VConfig config) {
 		List<Integer> modelInputMin;
 		List<Integer> modelInputStep;
 		List<Integer> modelInputHalo;
@@ -157,7 +157,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		addOutputNode(outputNode);
 	}
 
-	private void setMeta() {
+	public void setMeta() {
 		CitationSpecification citation = new DefaultCitationSpecification();
 		citation.setCitationText(citationText);
 		citation.setDOIText(doiText);

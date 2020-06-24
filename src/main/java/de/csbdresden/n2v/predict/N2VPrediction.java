@@ -34,18 +34,11 @@ import io.scif.MissingLibraryException;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.consumer.DefaultSingleImagePrediction;
 import net.imagej.modelzoo.consumer.ModelZooPrediction;
-import net.imagej.modelzoo.consumer.model.InputImageNode;
-import net.imagej.modelzoo.consumer.model.ModelZooAxis;
-import net.imagej.modelzoo.consumer.model.ModelZooModel;
 import net.imagej.ops.OpService;
-import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
-import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
@@ -93,25 +86,8 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 
 	@Override
 	public void run() throws OutOfMemoryError, FileNotFoundException, MissingLibraryException {
-		ModelZooModel model = loadModel(getTrainedModel());
-		if (!validateModel(model)) return;
-		increaseHalo(model);
-		try {
-			this.preprocessing(model);
-			this.executePrediction(model);
-			this.postprocessing(model);
-		} finally {
-			model.dispose();
-		}
+		super.run();
 		postprocessOutput(getOutput(), mean, stdDev);
-	}
-
-	private void increaseHalo(ModelZooModel model) {
-		//TODO HACK to make tiling work. without increasing the halo the tiles become visible. something's calculated wrong at the border.
-		InputImageNode<?> inputNode = model.getInputNodes().get(0);
-		for (ModelZooAxis axis : inputNode.getAxes()) {
-			if(axis.getHalo() > 1) axis.setHalo(axis.getHalo()+32);
-		}
 	}
 
 	private void preprocessInput(RandomAccessibleInterval input, FloatType mean, FloatType stdDev) {
@@ -123,14 +99,8 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
 
-	private IntervalView<FloatType> getFirstChannel(RandomAccessibleInterval<FloatType> output) {
-		long[] dims = new long[output.numDimensions()];
-		output.dimensions(dims);
-		dims[dims.length-1] = 1;
-		return Views.interval(output, new FinalInterval(dims));
-	}
-
 	public RandomAccessibleInterval<FloatType> predictPadded(RandomAccessibleInterval<FloatType> input, String axes) throws FileNotFoundException, MissingLibraryException {
+		if(getTrainedModel() == null) return null;
 		setInput(input, axes);
 		run();
 		if(getOutput() == null) return null;
