@@ -92,7 +92,7 @@ public class UpgradeN2VModelCommand implements Command {
 		ModelSpecification oldSpec = model.getSpecification();
 		if(oldSpec.getFormatVersion().equals("0.1.0")) {
 			try {
-				upgrade(model, destinationFolder, destinationFileName);
+				return upgrade(model, destinationFolder, destinationFileName);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -103,15 +103,15 @@ public class UpgradeN2VModelCommand implements Command {
 				logService.error("Unknown model format version " + oldSpec.getFormatVersion());
 			}
 		}
-		return model;
+		return null;
 	}
 
-	private void upgrade(ModelZooArchive model, File destinationFolder, String destinationFileName) throws IOException {
+	private ModelZooArchive upgrade(ModelZooArchive model, File destinationFolder, String destinationFileName) throws IOException {
 		ModelSpecification oldSpec = model.getSpecification();
 		File destination = new File(destinationFolder, destinationFileName + ".bioimage.io.zip");
 		if (destination.getAbsolutePath().equals(getAbsolutePath(model.getSource()))) {
 			logService.error("Destination file cannot be the same as the deprecated model ZIP file");
-			return;
+			return model;
 		}
 		Files.copy(new File(model.getSource().getURI()).toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		N2VModelSpecification newSpec = new N2VModelSpecification();
@@ -121,12 +121,14 @@ public class UpgradeN2VModelCommand implements Command {
 		newSpec.setDescription(oldSpec.getDescription());
 		newSpec.setAuthors(oldSpec.getAuthors());
 		newSpec.setTags(oldSpec.getTags());
+		newSpec.getPredictionPreprocessing().addAll(oldSpec.getPredictionPreprocessing());
+		newSpec.getPredictionPostprocessing().addAll(oldSpec.getPredictionPostprocessing());
 		try (FileSystem fileSystem = FileSystems.newFileSystem(destination.toPath(), null)) {
 			Path specPath = fileSystem.getPath(oldSpec.getModelFileName());
 			Files.delete(specPath);
 			newSpec.write(fileSystem.getPath(newSpec.getModelFileName()));
 		}
-		output = modelZooService.open(destination);
+		return modelZooService.open(destination);
 	}
 
 	private String getAbsolutePath(Location source) {
