@@ -79,6 +79,7 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 
 	@Override
 	public void setInput(String name, RandomAccessibleInterval<?> value, String axes) {
+		value = opService.copy().rai(value);
 		preprocessInput(value, mean, stdDev);
 		super.setInput(name, value, axes);
 	}
@@ -99,7 +100,7 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
 
-	public RandomAccessibleInterval<FloatType> predictPadded(RandomAccessibleInterval<FloatType> input, String axes) throws FileNotFoundException, MissingLibraryException {
+	public RandomAccessibleInterval<FloatType> predict(RandomAccessibleInterval<FloatType> input, String axes) throws FileNotFoundException, MissingLibraryException {
 		if(getTrainedModel() == null) return null;
 		setInput(input, axes);
 		run();

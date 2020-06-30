@@ -125,7 +125,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 			Img<FloatType> input = ij.op().convert().float32(networkInput);
 			RandomAccessibleInterval<FloatType> output = null;
 			try {
-				output = prediction.predictPadded(TrainUtils.copy(input), "XY");
+				output = prediction.predict(TrainUtils.copy(input), "XY");
 			} catch (FileNotFoundException | MissingLibraryException e) {
 				e.printStackTrace();
 			}

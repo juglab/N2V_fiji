@@ -210,7 +210,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 		N2VPrediction prediction = new N2VPrediction(context);
 		prediction.setTrainedModel(latestTrainedModel);
 		try {
-			this.output = prediction.predictPadded(this.prediction, axes);
+			this.output = prediction.predict(this.prediction, axes);
 		} catch (FileNotFoundException | MissingLibraryException e) {
 			e.printStackTrace();
 			n2v.getDialog().dispose();

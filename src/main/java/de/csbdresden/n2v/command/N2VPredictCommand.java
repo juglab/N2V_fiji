@@ -120,7 +120,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
 		converted = TrainUtils.copy(converted);
 		try {
-			RandomAccessibleInterval<FloatType> predictionResult = prediction.predictPadded(converted, axes);
+			RandomAccessibleInterval<FloatType> predictionResult = prediction.predict(converted, axes);
 			if(predictionResult == null) return;
 			output = datasetService.create(predictionResult);
 		} catch (FileNotFoundException | MissingLibraryException e) {
