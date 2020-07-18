@@ -32,6 +32,8 @@ import net.imagej.ops.OpService;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converter;
+import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.loops.LoopBuilder;
@@ -55,6 +57,12 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 public class TrainUtils {
+
+	public static <T extends RealType<T>> RandomAccessibleInterval<FloatType> normalizeConverter(RandomAccessibleInterval<T> data, FloatType mean, FloatType stdDev) {
+		Converter<? super T, ? super FloatType> converter = (Converter<T, FloatType>) (input, output)
+				-> output.set((input.getRealFloat() - mean.get())/stdDev.get());
+		return Converters.convert(data, converter, new FloatType());
+	}
 
 	public static void normalizeInplace(RandomAccessibleInterval<FloatType> data, FloatType mean, FloatType stdDev) {
 		LoopBuilder.setImages( data ).forEachPixel( (pixel ) -> {

@@ -81,24 +81,14 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 	}
 
 	@Override
-	public void setInput(String name, RandomAccessibleInterval<?> value, String axes) {
-		value = opService.copy().rai(value);
-		preprocessInput(value, mean, stdDev);
-		super.setInput(name, value, axes);
+	public <T extends RealType<T>> void setInput(String name, RandomAccessibleInterval<T> value, String axes) {
+		super.setInput(name, TrainUtils.normalizeConverter(value, mean, stdDev), axes);
 	}
-
 
 	@Override
 	public void run() throws OutOfMemoryError, FileNotFoundException, MissingLibraryException {
 		super.run();
-		postprocessOutput(getOutput(), mean, stdDev);
-	}
-
-	private void preprocessInput(RandomAccessibleInterval input, FloatType mean, FloatType stdDev) {
-		TrainUtils.normalizeInplace(input, mean, stdDev);
-	}
-
-	private void postprocessOutput(RandomAccessibleInterval<FloatType> output, FloatType mean, FloatType stdDev) {
+		RandomAccessibleInterval<FloatType> output = getOutput();
 		if(output == null) return;
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
