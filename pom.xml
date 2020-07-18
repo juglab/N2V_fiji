@@ -91,7 +91,7 @@
 		<!-- LICENSE -->
 		<license.licenseName>bsd_2</license.licenseName>
 		<license.copyrightOwners>Center for Systems Biology Dresden</license.copyrightOwners>
-		<tensorflow.version>1.13.1</tensorflow.version>
+		<tensorflow.version>1.15.0</tensorflow.version>
 		<imagej-tensorflow.version>1.1.4</imagej-tensorflow.version>
 
 
@@ -114,7 +114,7 @@
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>imagej-modelzoo</artifactId>
-			<version>0.2.0</version>
+			<version>0.2.2</version>
 		</dependency>
 		<dependency>
 			<groupId>net.imagej</groupId>

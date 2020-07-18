@@ -33,9 +33,10 @@ import de.csbdresden.n2v.train.TrainUtils;
 import io.scif.MissingLibraryException;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.consumer.DefaultSingleImagePrediction;
-import net.imagej.modelzoo.consumer.ModelZooPrediction;
+import net.imagej.modelzoo.consumer.SingleImagePrediction;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
@@ -44,7 +45,7 @@ import org.scijava.plugin.Plugin;
 
 import java.io.FileNotFoundException;
 
-@Plugin(type = ModelZooPrediction.class, name = "n2v")
+@Plugin(type = SingleImagePrediction.class, name = "n2v")
 public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, FloatType> {
 
 	private FloatType mean;
@@ -62,6 +63,8 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 	public N2VPrediction(Context context) {
 		super(context);
 	}
+
+	public N2VPrediction() {}
 
 	@Override
 	public void setTrainedModel(ModelZooArchive trainedModel) {
