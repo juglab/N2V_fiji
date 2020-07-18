@@ -108,7 +108,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 //			DatasetView view = imageDisplayService.getActiveDatasetView(display);
 //			colorTables = view.getColorTables();
 //		}
-		N2VPrediction prediction = new N2VPrediction(context);
+		N2VPrediction<T> prediction = new N2VPrediction<>(context);
 		try {
 			setTrainedModel(prediction, modelFile.getAbsolutePath());
 		} catch (IOException e) {
@@ -117,10 +117,8 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 		prediction.setNumberOfTiles(numTiles);
 		prediction.setBatchSize(batchSize);
 //		prediction.setShowDialog(showProgressDialog);
-		RandomAccessibleInterval<FloatType> converted = Converters.convert(input, new RealFloatConverter<>(), new FloatType());
-		converted = TrainUtils.copy(converted);
 		try {
-			RandomAccessibleInterval<FloatType> predictionResult = prediction.predict(converted, axes);
+			RandomAccessibleInterval<FloatType> predictionResult = prediction.predict(input, axes);
 			if(predictionResult == null) return;
 			output = datasetService.create(predictionResult);
 		} catch (FileNotFoundException | MissingLibraryException e) {
@@ -162,20 +160,18 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 
 //		ij.log().setLevel(LogLevel.TRACE);
 
-		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/new-n2v-sem-demo.zip");
+		File modelFile = new File("/home/random/Documents/2020-06 NEUBIAS/models/n2v-sem.bioimage.io.zip");
 
 		final File predictionInput = new File( "/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/input.tif" );
 
 		if ( predictionInput.exists() ) {
-			RandomAccessibleInterval _input = ( RandomAccessibleInterval ) ij.io().open( predictionInput.getAbsolutePath() );
-			RandomAccessibleInterval _inputConverted = ij.op().convert().float32( Views.iterable( _input ) );
+			RandomAccessibleInterval input = ( RandomAccessibleInterval ) ij.io().open( predictionInput.getAbsolutePath() );
 //			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
 
-			RandomAccessibleInterval prediction = ij.op().copy().rai( _inputConverted );
-			ij.ui().show(prediction);
+			ij.ui().show(input);
 
 			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false
-					,"input", prediction, "modelFile", modelFile, "axes", "XYB"
+					,"input", input, "modelFile", modelFile, "axes", "XYB"
 			).get();
 			ij.ui().show( plugin.getOutput( "output" ) );
 		} else

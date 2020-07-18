@@ -46,7 +46,7 @@ import org.scijava.plugin.Plugin;
 import java.io.FileNotFoundException;
 
 @Plugin(type = SingleImagePrediction.class, name = "n2v")
-public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, FloatType> {
+public class N2VPrediction<T extends RealType<T>> extends DefaultSingleImagePrediction<T, FloatType> {
 
 	private FloatType mean;
 	private FloatType stdDev;
@@ -93,7 +93,7 @@ public class N2VPrediction extends DefaultSingleImagePrediction<FloatType, Float
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
 
-	public RandomAccessibleInterval<FloatType> predict(RandomAccessibleInterval<FloatType> input, String axes) throws FileNotFoundException, MissingLibraryException {
+	public RandomAccessibleInterval<FloatType> predict(RandomAccessibleInterval<T> input, String axes) throws FileNotFoundException, MissingLibraryException {
 		if(getTrainedModel() == null) return null;
 		setInput(input, axes);
 		run();
