@@ -91,6 +91,7 @@
 		<!-- LICENSE -->
 		<license.licenseName>bsd_2</license.licenseName>
 		<license.copyrightOwners>Center for Systems Biology Dresden</license.copyrightOwners>
+		<license.excludes>**/script_templates/**</license.excludes>
 		<tensorflow.version>1.15.0</tensorflow.version>
 		<imagej-tensorflow.version>1.1.4</imagej-tensorflow.version>
 
