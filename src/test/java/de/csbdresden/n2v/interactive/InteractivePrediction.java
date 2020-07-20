@@ -34,8 +34,6 @@ import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.type.numeric.real.FloatType;
 import org.junit.After;
 import org.junit.Test;
 import org.scijava.log.LogLevel;

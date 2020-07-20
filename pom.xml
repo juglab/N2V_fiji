@@ -115,7 +115,7 @@
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>imagej-modelzoo</artifactId>
-			<version>0.2.2</version>
+			<version>0.3.1</version>
 		</dependency>
 		<dependency>
 			<groupId>net.imagej</groupId>
