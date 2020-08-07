@@ -30,6 +30,7 @@ package de.csbdresden.n2v.command;
 
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
+import net.imglib2.Cursor;
 import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
@@ -86,7 +87,12 @@ public class TestCommands {
 		ij.ui().setHeadless(true);
 		Img<FloatType> input = ij.op().create().img(new FinalDimensions(200, 200), new FloatType());
 		Random random = new Random();
-		input.forEach(pix -> pix.set(random.nextFloat()));
+		float[] values = new float[(int) input.size()];
+		Cursor<FloatType> cursor = input.cursor();
+		for (int i = 0; i < values.length; i++) {
+			values[i] = random.nextFloat();
+			cursor.next().set(values[i]);
+		}
 
 		CommandModule res = ij.command().run(N2VTrainCommand.class, false,
 				"training", input,
@@ -112,6 +118,10 @@ public class TestCommands {
 
 		RandomAccessibleInterval output = (RandomAccessibleInterval) res.getOutput("output");
 		assertNotNull(output);
+		cursor = input.cursor();
+		for (int i = 0; i < values.length; i++) {
+			assertEquals(cursor.next().getRealFloat(), values[i], 0.0001);
+		}
 		assertEquals(2, output.numDimensions());
 		assertEquals(input.dimension(0), output.dimension(0));
 		assertEquals(input.dimension(1), output.dimension(1));
