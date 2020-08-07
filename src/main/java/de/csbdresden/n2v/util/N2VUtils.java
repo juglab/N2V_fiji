@@ -59,7 +59,7 @@ public class N2VUtils {
 
 	public static <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> normalize(RandomAccessibleInterval<T> input, T mean, T stdDev, OpService opService) {
 		Img<T> rai = opService.create().img(input, input.randomAccess().get().copy());
-		LoopBuilder.setImages( rai, input ).forEachPixel( (res, in ) -> {
+		LoopBuilder.setImages( rai, input ).multiThreaded().forEachPixel( (res, in ) -> {
 			res.set(in);
 			res.sub(mean);
 			res.div(stdDev);

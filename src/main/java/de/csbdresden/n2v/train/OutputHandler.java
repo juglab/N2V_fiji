@@ -199,7 +199,7 @@ public class OutputHandler {
 
 	private Img<?> toImg(RandomAccessibleInterval<FloatType> input) {
 		ArrayImg<FloatType, ?> res = new ArrayImgFactory<>(new FloatType()).create(input);
-		LoopBuilder.setImages(input, res).forEachPixel((in, out) -> {
+		LoopBuilder.setImages(input, res).multiThreaded().forEachPixel((in, out) -> {
 			out.set(in);
 		});
 		return res;
