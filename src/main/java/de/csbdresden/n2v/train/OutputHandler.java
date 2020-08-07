@@ -186,9 +186,13 @@ public class OutputHandler {
 		sess.runner().feed("save/Const", checkpointPrefix).addTarget("save/control_dependency").run();
 		noCheckpointSaved = false;
 		if(input != null && output != null) {
-			imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestInput()).getAbsolutePath(),
+			File imgIn = new File(mostRecentModelDir, new DefaultModelSpecification().getTestInput());
+			if(imgIn.exists()) imgIn.delete();
+			imgSaver.saveImg(imgIn.getAbsolutePath(),
 					toImg(input));
-			imgSaver.saveImg(new File(mostRecentModelDir, new DefaultModelSpecification().getTestOutput()).getAbsolutePath(),
+			File imgOut = new File(mostRecentModelDir, new DefaultModelSpecification().getTestOutput());
+			if(imgOut.exists()) imgOut.delete();
+			imgSaver.saveImg(imgOut.getAbsolutePath(),
 					toImg(output));
 		}
 	}

@@ -49,7 +49,7 @@ public class OpenArchivedModel {
 		ij.launch();
 
 		// resource paths
-		String modelPath = "/home/random/Documents/2020-06 NEUBIAS/models/n2v.bioimage.io.zip";
+		String modelPath = getClass().getResource("/n2v-dummy.bioimage.io.zip").getPath();
 
 		Object model = ij.io().open(modelPath);
 		ij.ui().show(model);
