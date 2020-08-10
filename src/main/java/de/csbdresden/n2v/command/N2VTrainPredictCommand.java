@@ -31,7 +31,6 @@ package de.csbdresden.n2v.command;
 import de.csbdresden.n2v.predict.N2VPrediction;
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
-import io.scif.MissingLibraryException;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
@@ -51,7 +50,6 @@ import org.scijava.plugin.Plugin;
 import org.scijava.widget.NumberWidget;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -211,7 +209,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 		prediction.setTrainedModel(latestTrainedModel);
 		try {
 			this.output = prediction.predict(this.prediction, axes);
-		} catch (FileNotFoundException | MissingLibraryException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 			n2v.getDialog().dispose();
 		}

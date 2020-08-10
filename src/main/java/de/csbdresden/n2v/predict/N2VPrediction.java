@@ -30,7 +30,6 @@ package de.csbdresden.n2v.predict;
 
 import de.csbdresden.n2v.train.N2VModelSpecification;
 import de.csbdresden.n2v.train.TrainUtils;
-import io.scif.MissingLibraryException;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.consumer.DefaultSingleImagePrediction;
 import net.imagej.modelzoo.consumer.SingleImagePrediction;
@@ -42,8 +41,6 @@ import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-
-import java.io.FileNotFoundException;
 
 @Plugin(type = SingleImagePrediction.class, name = "n2v")
 public class N2VPrediction<T extends RealType<T>> extends DefaultSingleImagePrediction<T, FloatType> {
@@ -86,14 +83,14 @@ public class N2VPrediction<T extends RealType<T>> extends DefaultSingleImagePred
 	}
 
 	@Override
-	public void run() throws OutOfMemoryError, FileNotFoundException, MissingLibraryException {
+	public void run() throws OutOfMemoryError, Exception {
 		super.run();
 		RandomAccessibleInterval<FloatType> output = getOutput();
 		if(output == null) return;
 		TrainUtils.denormalizeInplace(output, mean, stdDev, opService);
 	}
 
-	public RandomAccessibleInterval<FloatType> predict(RandomAccessibleInterval<T> input, String axes) throws FileNotFoundException, MissingLibraryException {
+	public RandomAccessibleInterval<FloatType> predict(RandomAccessibleInterval<T> input, String axes) throws Exception {
 		if(getTrainedModel() == null) return null;
 		setInput(input, axes);
 		run();

@@ -29,8 +29,6 @@
 package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.predict.N2VPrediction;
-import de.csbdresden.n2v.train.TrainUtils;
-import io.scif.MissingLibraryException;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;
 import net.imagej.ImageJ;
@@ -38,11 +36,8 @@ import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.converter.Converters;
-import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.CommandModule;
@@ -51,7 +46,6 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
@@ -121,7 +115,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 			RandomAccessibleInterval<FloatType> predictionResult = prediction.predict(input, axes);
 			if(predictionResult == null) return;
 			output = datasetService.create(predictionResult);
-		} catch (FileNotFoundException | MissingLibraryException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 //		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());

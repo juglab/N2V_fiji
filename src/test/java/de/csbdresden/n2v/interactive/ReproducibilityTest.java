@@ -32,7 +32,6 @@ import de.csbdresden.n2v.predict.N2VPrediction;
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
 import de.csbdresden.n2v.train.TrainUtils;
-import io.scif.MissingLibraryException;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooService;
 import net.imglib2.Cursor;
@@ -47,7 +46,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.scijava.log.LogLevel;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -126,7 +124,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 			RandomAccessibleInterval<FloatType> output = null;
 			try {
 				output = prediction.predict(TrainUtils.copy(input), "XY");
-			} catch (FileNotFoundException | MissingLibraryException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 //			System.out.println("mean gt   : " + ij.op().stats().mean(pair.getRight()).getRealDouble());

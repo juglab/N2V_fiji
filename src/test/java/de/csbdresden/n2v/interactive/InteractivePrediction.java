@@ -28,7 +28,6 @@
  */
 package de.csbdresden.n2v.interactive;
 
-import io.scif.MissingLibraryException;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
@@ -37,8 +36,6 @@ import net.imglib2.img.Img;
 import org.junit.After;
 import org.junit.Test;
 import org.scijava.log.LogLevel;
-
-import java.io.IOException;
 
 public class InteractivePrediction {
 	private ImageJ ij;
@@ -49,7 +46,7 @@ public class InteractivePrediction {
 	}
 
 	@Test
-	public void run() throws IOException, MissingLibraryException {
+	public void run() throws Exception {
 
 		ij = new ImageJ();
 		ij.launch();
@@ -68,7 +65,7 @@ public class InteractivePrediction {
 
 	}
 
-	public static void main(String... args) throws IOException, MissingLibraryException {
+	public static void main(String... args) throws Exception {
 		new InteractivePrediction().run();
 	}
 }

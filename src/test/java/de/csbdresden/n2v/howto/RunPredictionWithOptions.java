@@ -28,7 +28,6 @@
  */
 package de.csbdresden.n2v.howto;
 
-import io.scif.MissingLibraryException;
 import net.imagej.Dataset;
 import net.imagej.DatasetService;
 import net.imagej.ImageJ;
@@ -41,14 +40,12 @@ import org.scijava.io.IOService;
 import org.scijava.log.LogService;
 import org.scijava.ui.UIService;
 
-import java.io.IOException;
-
 /**
  * How to run prediction headless and with specific options
  */
 public class RunPredictionWithOptions {
 
-	public void run() throws IOException, MissingLibraryException {
+	public void run() throws Exception {
 
 		// create new ImageJ instance
 		ImageJ ij = new ImageJ();
@@ -119,7 +116,7 @@ public class RunPredictionWithOptions {
 
 	}
 
-	public static void main(String... args) throws IOException, MissingLibraryException {
+	public static void main(String... args) throws Exception {
 		new RunPredictionWithOptions().run();
 	}
 }
