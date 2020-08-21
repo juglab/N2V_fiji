@@ -60,10 +60,10 @@ import java.util.concurrent.Future;
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>N2V train + predict" )
 public class N2VTrainPredictCommand implements Command, Cancelable {
 
-	@Parameter(label = "Image used for training")
+	@Parameter(label = "Image used for training", persist = false)
 	private RandomAccessibleInterval< FloatType > training;
 
-	@Parameter(label = "Image to denoise after training")
+	@Parameter(label = "Image to denoise after training", persist = false)
 	private RandomAccessibleInterval< FloatType > prediction;
 
 	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)")

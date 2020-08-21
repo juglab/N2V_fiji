@@ -58,10 +58,10 @@ import java.util.concurrent.Future;
 @Plugin( type = Command.class, menuPath = "Plugins>CSBDeep>N2V>N2V train" )
 public class N2VTrainCommand implements Command, Cancelable {
 
-	@Parameter(label = "Image used for training")
+	@Parameter(label = "Image used for training", persist = false)
 	private RandomAccessibleInterval< FloatType > training;
 
-	@Parameter(label = "Image used for validation")
+	@Parameter(label = "Image used for validation", persist = false)
 	private RandomAccessibleInterval< FloatType > validation;
 
 	@Parameter(label = "Use 3D model instead of 2D")

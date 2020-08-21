@@ -54,7 +54,7 @@ public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePre
 	@Parameter(label = "Trained model file (bioimage.io.zip)")
 	private File modelFile;
 
-	@Parameter
+	@Parameter(persist = false)
 	private RandomAccessibleInterval< T > input;
 
 	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)", description = "You can predict one dimension independently per position. Use B ( = batch) for this dimension.")
