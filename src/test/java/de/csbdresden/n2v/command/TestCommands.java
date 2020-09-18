@@ -70,9 +70,9 @@ public class TestCommands {
 		RandomAccessibleInterval output = (RandomAccessibleInterval) res.getOutput("output");
 
 		assertNotNull(latestExport);
-		assertTrue(new File(latestExport.getSource().getURI()).exists());
+		assertTrue(new File(latestExport.getLocation().getURI()).exists());
 		assertNotNull(bestExport);
-		assertTrue(new File(bestExport.getSource().getURI()).exists());
+		assertTrue(new File(bestExport.getLocation().getURI()).exists());
 		assertNotNull(output);
 		assertEquals(2, output.numDimensions());
 		assertEquals(input.dimension(0), output.dimension(0));
@@ -107,10 +107,10 @@ public class TestCommands {
 		ModelZooArchive bestExport = (ModelZooArchive) res.getOutput("bestTrainedModel");
 
 		assertNotNull(latestExport);
-		File latestExportFile = new File(latestExport.getSource().getURI());
+		File latestExportFile = new File(latestExport.getLocation().getURI());
 		assertTrue(latestExportFile.exists());
 		assertNotNull(bestExport);
-		assertTrue(new File(bestExport.getSource().getURI()).exists());
+		assertTrue(new File(bestExport.getLocation().getURI()).exists());
 
 		res = ij.command().run(N2VPredictCommand.class, false,
 				"input", input,

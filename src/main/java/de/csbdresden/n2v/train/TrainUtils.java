@@ -65,4 +65,10 @@ public class TrainUtils {
 		}
 		return res;
 	}
+
+	public static RandomAccessibleInterval<FloatType> denormalizeConverter(RandomAccessibleInterval<FloatType> data, FloatType mean, FloatType stdDev) {
+		Converter<FloatType, FloatType> converter = (input, output)
+				-> output.set(input.getRealFloat()*stdDev.get() + mean.get());
+		return Converters.convert(data, converter, new FloatType());
+	}
 }

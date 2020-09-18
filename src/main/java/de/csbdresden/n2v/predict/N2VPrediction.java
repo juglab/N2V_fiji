@@ -57,11 +57,12 @@ public class N2VPrediction<T extends RealType<T>> extends DefaultSingleImagePred
 	@Parameter
 	private Context context;
 
+	public N2VPrediction() {
+	}
+
 	public N2VPrediction(Context context) {
 		super(context);
 	}
-
-	public N2VPrediction() {}
 
 	@Override
 	public void setTrainedModel(ModelZooArchive trainedModel) {

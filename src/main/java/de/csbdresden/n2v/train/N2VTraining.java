@@ -28,6 +28,7 @@
  */
 package de.csbdresden.n2v.train;
 
+import de.csbdresden.n2v.predict.N2VPrediction;
 import de.csbdresden.n2v.ui.TrainingProgress;
 import de.csbdresden.n2v.util.N2VUtils;
 import io.scif.services.DatasetIOService;
@@ -179,6 +180,8 @@ public class N2VTraining implements ModelZooTraining {
 	}
 	public void train() throws ExecutionException {
 
+		if (noValidationData()) return;
+
 		pool = Executors.newSingleThreadExecutor();
 
 		try {
@@ -191,6 +194,19 @@ public class N2VTraining implements ModelZooTraining {
 			logService.warn("N2V training canceled.");
 		}
 
+	}
+
+	private boolean noValidationData() {
+		int numVal = input().getValidationX().size();
+		if(numVal == 0) {
+			cancel();
+			dispose();
+			String msg = "No validation data available - if the same data is used " +
+					"for training and validation, please choose a bigger dataset.";
+			uiService.showDialog(msg, DialogPrompt.MessageType.WARNING_MESSAGE);
+			return true;
+		}
+		return false;
 	}
 
 	private void mainThread() {
@@ -245,9 +261,9 @@ public class N2VTraining implements ModelZooTraining {
 //			uiService.show("_X", opService.copy().rai(_X));
 //			uiService.show("_validationX",opService.copy().rai(_validationX));
 
+			if (!batchNumSufficient(input().getX().size())) return;
 			double n2v_perc_pix = 1.6;
 
-			if (!batchNumSufficient(input().getX().size())) return;
 
 			N2VDataWrapper<FloatType> training_data = makeTrainingData(n2v_perc_pix);
 
@@ -279,7 +295,8 @@ public class N2VTraining implements ModelZooTraining {
 
 			previewHandler = new PreviewHandler(context, config().getTrainDimensions());
 			if(!headless()) {
-				previewHandler.update(validation_data.get(0).getFirst(), validation_data.get(0).getFirst(), headless());
+				RandomAccessibleInterval<FloatType> denormalized = denormalize(validation_data.get(0).getFirst());
+				previewHandler.update(denormalized, denormalized, headless());
 			}
 
 			for (int i = 0; i < config().getNumEpochs(); i++) {
@@ -497,7 +514,8 @@ public class N2VTraining implements ModelZooTraining {
 			if(i == 0) {
 				Tensor outputTensor = fetchedTensors.get(3);
 				RandomAccessibleInterval<FloatType> output = TensorFlowConverter.tensorToImage(outputTensor, getMapping());
-				previewHandler.update(item.getFirst(), output, headless());
+				previewHandler.update(
+						denormalize(item.getFirst()), denormalize(output), headless());
 //			updateHistoryImage(output);
 			}
 			fetchedTensors.forEach(Tensor::close);
@@ -511,6 +529,10 @@ public class N2VTraining implements ModelZooTraining {
 
 		logService.info("\nValidation loss: " + avgLoss + " abs: " + avgAbs + " mse: " + avgMse);
 		return avgLoss;
+	}
+
+	private RandomAccessibleInterval<FloatType> denormalize(RandomAccessibleInterval<FloatType> item) {
+		return TrainUtils.denormalizeConverter(item, outputHandler.getMean(), outputHandler.getStdDev());
 	}
 
 	public int getStepsFinished() {

@@ -31,6 +31,7 @@ package de.csbdresden.n2v.train;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.Context;
@@ -71,8 +72,10 @@ public class PreviewHandler {
 
 	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
 		if (Thread.interrupted()) return;
-		if(splitImage == null) splitImage = opService.copy().rai(out);
-		else opService.copy().rai(splitImage, out);
+		if(splitImage == null) splitImage = opService.create().img(out);
+		LoopBuilder.setImages(out, splitImage).forEachPixel((outPx, splitPx) -> {
+			splitPx.set(outPx);
+		});
 		if(trainDimensions == 2) updateSplitImage2D(in);
 		if(trainDimensions == 3) updateSplitImage3D(in);
 		Display<?> display = uiService.context().service(DisplayService.class).getDisplay("training preview");

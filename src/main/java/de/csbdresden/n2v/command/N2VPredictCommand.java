@@ -29,147 +29,45 @@
 package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.predict.N2VPrediction;
-import net.imagej.Dataset;
-import net.imagej.DatasetService;
-import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
-import net.imagej.modelzoo.ModelZooService;
+import net.imagej.modelzoo.consumer.commands.DefaultModelZooPredictionCommand;
 import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.real.FloatType;
-import org.scijava.Context;
-import org.scijava.ItemIO;
-import org.scijava.command.CommandModule;
-import org.scijava.log.LogService;
-import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
 
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
-public class N2VPredictCommand <T extends RealType<T>> implements SingleImagePredictionCommand {
-
-	@Parameter(label = "Trained model file (bioimage.io.zip)")
-	private File modelFile;
-
-	@Parameter(persist = false)
-	private RandomAccessibleInterval< T > input;
-
-	@Parameter(label = "Axes of prediction input (subset of XYZB, B = batch)", description = "You can predict one dimension independently per position. Use B ( = batch) for this dimension.")
-	private String axes = "XY";
-
-	@Parameter(label = "Batch size", required = false, description = "<html>The batch size will only be used if a batch axis exists.<br>It can improve performance to process multiple batches at once (batch size > 1)")
-	private int batchSize = 10;
-
-	@Parameter(label = "Number of tiles (1 = no tiling)", required = false, description = "<html>Increasing the tiling can help if the memory is insufficient to deal with the whole image at once.<br>Too many tiles decrease performance because an overlap has to be computed.")
-	private int numTiles = 8;
-
-	@Parameter( type = ItemIO.OUTPUT )
-	private Dataset output;
-
-	@Parameter(required = false)
-	private boolean showProgressDialog = true;
-
-	@Parameter
-	private Context context;
-
-//	@Parameter
-//	private DisplayService displayService;
-
-	@Parameter
-	private DatasetService datasetService;
-
-	@Parameter
-	private ModelZooService modelZooService;
-
-	@Parameter
-	private LogService logService;
-
-//	@Parameter
-//	private ImageDisplayService imageDisplayService;
+public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPredictionCommand {
 
 	@Override
 	public void run() {
-		//TODO make transferring LUTs work..
-		//TODO the following code works for IJ2, but not for LUTs set via IJ1
-//		List<Display<?>> displays = displayService.getDisplays(prediction);
-//		List<ColorTable> colorTables = new ArrayList<>();
-//		if(displays.size() > 0) {
-//			ImageDisplay display = (ImageDisplay) displays.get(0);
-//			display.update();
-//			DatasetView view = imageDisplayService.getActiveDatasetView(display);
-//			colorTables = view.getColorTables();
-//		}
-		N2VPrediction<T> prediction = new N2VPrediction<>(context);
 		try {
-			setTrainedModel(prediction, modelFile.getAbsolutePath());
+			validateTrainedModel(getModelFile());
 		} catch (IOException e) {
 			e.printStackTrace();
+			return;
 		}
-		prediction.setNumberOfTiles(numTiles);
-		prediction.setBatchSize(batchSize);
-//		prediction.setShowDialog(showProgressDialog);
-		try {
-			RandomAccessibleInterval<FloatType> predictionResult = prediction.predict(input, axes);
-			if(predictionResult == null) return;
-			output = datasetService.create(predictionResult);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-//		output = Converters.convert(_output, new FloatRealConverter<>(), input.randomAccess().get());
-//		output = datasetService.create(_output);
-//		output.initializeColorTables(colorTables.size());
-//		for (int i = 0; i < colorTables.size(); i++) {
-//			output.setColorTable(colorTables.get(i), i);
-//		}
+		setPrediction(new N2VPrediction(getContext()));
+		super.run();
 	}
 
-	private void setTrainedModel(N2VPrediction prediction, String trainedModel) throws IOException {
-		ModelZooArchive model = modelZooService.open(trainedModel);
+	private void validateTrainedModel(File trainedModel) throws IOException {
+		ModelZooArchive model = modelZooService().open(trainedModel);
 		if(model.getSpecification().getFormatVersion().equals("0.1.0")) {
-			logService.error("Deprecated model format - please call Plugins > CSBDeep > N2V > Upgrade N2V model.");
+			log().error("Deprecated model format - please call Plugins > CSBDeep > N2V > Upgrade N2V model.");
 			return;
 		}
 		if(isMultiChannel()) {
-			logService.error("Can't predict multichannel images. This will be implemented in the future.");
-			return;
+			log().error("Can't predict multichannel images. This will be implemented in the future.");
 		}
-		prediction.setTrainedModel(model);
 	}
 
 	private boolean isMultiChannel() {
-		int channelIndex = axes.indexOf("C");
+		int channelIndex = getAxes().indexOf("C");
 		if(channelIndex < 0) return false;
-		if(input.numDimensions() <= channelIndex) return false;
-		return input.dimension(channelIndex) > 1;
-	}
-
-	public static void main( final String... args ) throws Exception {
-
-		final ImageJ ij = new ImageJ();
-
-		ij.launch( args );
-
-//		ij.log().setLevel(LogLevel.TRACE);
-
-		File modelFile = new File("/home/random/Documents/2020-06 NEUBIAS/models/n2v-sem.bioimage.io.zip");
-
-		final File predictionInput = new File( "/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/input.tif" );
-
-		if ( predictionInput.exists() ) {
-			RandomAccessibleInterval input = ( RandomAccessibleInterval ) ij.io().open( predictionInput.getAbsolutePath() );
-//			_inputConverted = Views.interval(_inputConverted, new FinalInterval(1024, 1024  ));
-
-			ij.ui().show(input);
-
-			CommandModule plugin = ij.command().run( N2VPredictCommand.class, false
-					,"input", input, "modelFile", modelFile, "axes", "XYB"
-			).get();
-			ij.ui().show( plugin.getOutput( "output" ) );
-		} else
-			System.out.println( "Cannot find training image " + predictionInput.getAbsolutePath() );
-
+		if(getInput().numDimensions() <= channelIndex) return false;
+		return getInput().dimension(channelIndex) > 1;
 	}
 }

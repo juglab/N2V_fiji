@@ -53,12 +53,13 @@ public class InteractivePrediction {
 		ij.log().setLevel(LogLevel.DEBUG);
 
 		// resource paths
-		String modelPath = "/home/random/Documents/2020-06 NEUBIAS/models/n2v-sem.bioimage.io.zip";
+		String modelPath = getClass().getResource("/n2v-dummy.bioimage.io.zip").getPath();
+		String imgPath = getClass().getResource("/blobs.tif").getPath();
 
 		ModelZooArchive model = ij.get(ModelZooService.class).open(modelPath);
 		ij.ui().show(model);
 
-		Img img = (Img) ij.io().open("/home/random/Development/imagej/project/CSBDeep/train.tif");
+		Img img = (Img) ij.io().open(imgPath);
 
 		RandomAccessibleInterval output = ij.get(ModelZooService.class).predict(model, img, "XYB");
 		ij.ui().show(output);

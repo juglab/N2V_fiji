@@ -109,11 +109,11 @@ public class UpgradeN2VModelCommand implements Command {
 	private ModelZooArchive upgrade(ModelZooArchive model, File destinationFolder, String destinationFileName) throws IOException {
 		ModelSpecification oldSpec = model.getSpecification();
 		File destination = new File(destinationFolder, destinationFileName + ".bioimage.io.zip");
-		if (destination.getAbsolutePath().equals(getAbsolutePath(model.getSource()))) {
+		if (destination.getAbsolutePath().equals(getAbsolutePath(model.getLocation()))) {
 			logService.error("Destination file cannot be the same as the deprecated model ZIP file");
 			return model;
 		}
-		Files.copy(new File(model.getSource().getURI()).toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		Files.copy(new File(model.getLocation().getURI()).toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		N2VModelSpecification newSpec = new N2VModelSpecification();
 		newSpec.setMeta();
 		newSpec.setInputsOutputs(new N2VConfig());
