@@ -31,7 +31,9 @@ package de.csbdresden.n2v.command;
 import com.google.common.io.Files;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -41,13 +43,16 @@ import static org.junit.Assert.assertNotNull;
 
 public class TestUpgradeN2VModelCommand {
 
+	@Rule
+	public TemporaryFolder folder = new TemporaryFolder();
+
 	@Test
 	public void testUpgrade() {
 		final ImageJ ij = new ImageJ();
 		File modelFile = new File(getClass().getResource("/format-0.1.0_model.zip").getPath());
 		UpgradeN2VModelCommand upgrader = new UpgradeN2VModelCommand();
 		ij.context().inject(upgrader);
-		File destinationFolder = Files.createTempDir();
+		File destinationFolder = folder.getRoot();
 		ModelZooArchive model = upgrader.tryUpgrade(modelFile, destinationFolder, "tmp");
 		assertNotNull(model);
 		assertNotNull(model.getSpecification());

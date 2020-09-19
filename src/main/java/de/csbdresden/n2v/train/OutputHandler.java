@@ -41,7 +41,6 @@ import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.io.FileUtils;
 import org.scijava.Context;
 import org.tensorflow.Graph;
-import org.tensorflow.Output;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
@@ -255,5 +254,10 @@ public class OutputHandler {
 
 	public void dispose() {
 		if(checkpointPrefix != null) checkpointPrefix.close();
+		try {
+			if(bestModelDir != null && bestModelDir.exists()) FileUtils.deleteDirectory(bestModelDir);
+			if(mostRecentModelDir != null && mostRecentModelDir.exists()) FileUtils.deleteDirectory(mostRecentModelDir);
+		} catch (IOException ignored) {
+		}
 	}
 }

@@ -37,6 +37,7 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
 import org.junit.Test;
 import org.scijava.command.CommandModule;
+import org.scijava.io.location.FileLocation;
 
 import java.io.File;
 import java.util.Random;
@@ -125,6 +126,9 @@ public class TestCommands {
 		assertEquals(2, output.numDimensions());
 		assertEquals(input.dimension(0), output.dimension(0));
 		assertEquals(input.dimension(1), output.dimension(1));
+
+		latestExportFile.delete();
+		((FileLocation)bestExport.getLocation()).getFile().delete();
 
 		ij.context().dispose();
 	}

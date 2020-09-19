@@ -105,6 +105,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 	private boolean canceled;
 	private ExecutorService pool;
 	private Future<?> future;
+	private N2VTraining n2v;
 
 	@Override
 	public void run() {
@@ -120,6 +121,10 @@ public class N2VTrainCommand implements Command, Cancelable {
 			logService.warn("N2V training command canceled.");
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
+		} finally {
+			if(n2v != null) {
+				n2v.output().dispose();
+			}
 		}
 	}
 
@@ -133,7 +138,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 			training = opService.convert().float32( Views.iterable( training ) );
 		}
 
-		N2VTraining n2v = new N2VTraining(context);
+		if(n2v == null) {
+			n2v = new N2VTraining(context);
+		}
 		n2v.init(new N2VConfig()
 				.setTrainDimensions(mode3D ? 3 : 2)
 				.setNumEpochs(numEpochs)
@@ -161,6 +168,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 			File savedModel = n2v.output().exportLatestTrainedModel();
 			if(savedModel == null) return;
 			openSavedModels(n2v, savedModel);
+			n2v.output().dispose();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
