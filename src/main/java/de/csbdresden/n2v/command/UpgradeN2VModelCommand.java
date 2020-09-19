@@ -30,14 +30,12 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VModelSpecification;
-import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import net.imagej.modelzoo.specification.ModelSpecification;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
-import org.scijava.command.CommandModule;
 import org.scijava.io.location.Location;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
@@ -135,18 +133,4 @@ public class UpgradeN2VModelCommand implements Command {
 		return new File(source.getURI()).getAbsolutePath();
 	}
 
-	public static void main( final String... args ) throws Exception {
-
-		final ImageJ ij = new ImageJ();
-
-		ij.launch( args );
-
-		File modelFile = new File("/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/n2v-sem-demo.zip");
-
-		CommandModule plugin = ij.command().run( UpgradeN2VModelCommand.class, false
-				,"modelFile", modelFile, "destinationFolder", "/home/random/Development/imagej/project/CSBDeep/training/sem-inverted-100-300/", "destinationFileName", "new-n2v-sem-demo"
-		).get();
-		ij.ui().show( plugin.getOutput( "output" ) );
-
-	}
 }

@@ -30,7 +30,6 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
-import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import org.scijava.Cancelable;
@@ -146,14 +145,4 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 		return null;
 	}
 
-	public static void main( final String... args ) throws Exception {
-
-		final ImageJ ij = new ImageJ();
-		ij.launch( args );
-
-		final File trainingFolderFile = new File( "/home/random/Development/python/n2v/examples/2D/denoising2D_SEM/data/test/" );
-
-		ij.command().run( N2VTrainOnFolderCommand.class, true,"training", trainingFolderFile, "validation", trainingFolderFile).get();
-
-	}
 }

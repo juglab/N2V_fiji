@@ -30,7 +30,6 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
-import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import net.imagej.ops.OpService;
@@ -194,19 +193,4 @@ public class N2VTrainCommand implements Command, Cancelable {
 		return null;
 	}
 
-	public static void main( final String... args ) throws Exception {
-
-		final ImageJ ij = new ImageJ();
-		ij.launch( args );
-
-		final File trainingImgFile = new File( "/home/random/Development/imagej/project/CSBDeep/train.tif" );
-
-		if ( trainingImgFile.exists() ) {
-			RandomAccessibleInterval input = ( RandomAccessibleInterval ) ij.io().open( trainingImgFile.getAbsolutePath() );
-
-			ij.command().run( N2VTrainCommand.class, true,"training", input, "validation", input).get();
-		} else
-			System.out.println( "Cannot find training image " + trainingImgFile.getAbsolutePath() );
-
-	}
 }
