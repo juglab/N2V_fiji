@@ -83,6 +83,7 @@ public class TrainingProgress extends JPanel {
 	private final JPanel taskContainer;
 	private final JFrame frame;
 	private final JButton finishBtn;
+	private final JButton saveModelBtn;
 	private final JButton cancelBtn;
 
 	private final SimpleAttributeSet red = new SimpleAttributeSet();
@@ -143,6 +144,12 @@ public class TrainingProgress extends JPanel {
 		finishBtn.setEnabled(false);
 		buttonsPanel.add( finishBtn, gbc );
 
+		gbc.gridx = 2;
+		saveModelBtn = new JButton( "Save Model" );
+		saveModelBtn.addActionListener( e -> training.saveModel() );
+		saveModelBtn.setEnabled(false);
+		buttonsPanel.add( saveModelBtn, gbc );
+
 		add( buttonsPanel, BorderLayout.SOUTH );
 
 		invalidate();
@@ -164,6 +171,10 @@ public class TrainingProgress extends JPanel {
 		} catch ( InterruptedException | InvocationTargetException e ) {
 			e.printStackTrace();
 		}
+	}
+
+	public void enableModelSaving(){
+		saveModelBtn.setEnabled(true);
 	}
 
 	public void addTask( final String title ) {

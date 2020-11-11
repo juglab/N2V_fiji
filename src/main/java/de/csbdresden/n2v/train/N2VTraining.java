@@ -288,7 +288,6 @@ public class N2VTraining implements ModelZooTraining {
 				dialog.setTaskDone( 0 );
 				dialog.setTaskStart( 1 );
 			}
-
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
 			remainingTimeEstimator.setNumSteps(config().getNumEpochs());
 
@@ -296,7 +295,7 @@ public class N2VTraining implements ModelZooTraining {
 			previewHandler = new PreviewHandler(context, config().getTrainDimensions());
 			if(!headless()) {
 				RandomAccessibleInterval<FloatType> denormalized = denormalize(validation_data.get(0).getFirst());
-				previewHandler.update(denormalized, denormalized, headless());
+				previewHandler.update(denormalized, denormalized, headless(), isStopped() || isCanceled());
 			}
 
 			for (int i = 0; i < config().getNumEpochs(); i++) {
@@ -336,20 +335,28 @@ public class N2VTraining implements ModelZooTraining {
 
 				}
 
+				if(!headless()) {
+					dialog.enableModelSaving();
+				}
+
 				if (Thread.interrupted() || isCanceled()) {
 					tensorWeights.close();
 					return;
 				}
 				training_data.on_epoch_end();
-				float validationLoss = validate(sess, validation_data, tensorWeights);
-				if (Thread.interrupted() || isCanceled()) {
-					tensorWeights.close();
-					return;
+
+				if(!isCanceled() || !isStopped() ){
+					float validationLoss = validate(sess, validation_data, tensorWeights);
+					if (Thread.interrupted() || isCanceled()) {
+						tensorWeights.close();
+						return;
+					}
+					outputHandler.saveCheckpoint(sess, previewHandler.getExampleInput(), previewHandler.getExampleOutput());
+					outputHandler.setCurrentValidationLoss(validationLoss);
+					if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
+					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
 				}
-				outputHandler.saveCheckpoint(sess, previewHandler.getExampleInput(), previewHandler.getExampleOutput());
-				outputHandler.setCurrentValidationLoss(validationLoss);
-				if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
-				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
+
 			}
 
 			tensorWeights.close();
@@ -515,7 +522,7 @@ public class N2VTraining implements ModelZooTraining {
 				Tensor outputTensor = fetchedTensors.get(3);
 				RandomAccessibleInterval<FloatType> output = TensorFlowConverter.tensorToImage(outputTensor, getMapping());
 				previewHandler.update(
-						denormalize(item.getFirst()), denormalize(output), headless());
+						denormalize(item.getFirst()), denormalize(output), headless(), isStopped() || isCanceled());
 //			updateHistoryImage(output);
 			}
 			fetchedTensors.forEach(Tensor::close);
@@ -588,7 +595,7 @@ public class N2VTraining implements ModelZooTraining {
 		getDialog().setTaskDone(1);
 		if(session != null) outputHandler.saveCheckpoint(session, previewHandler.getExampleInput(), previewHandler.getExampleOutput());
 		if(future != null) {
-			future.cancel(true);
+			future.cancel(false);
 		}
 		if(pool != null) {
 			pool.shutdownNow();
@@ -611,6 +618,10 @@ public class N2VTraining implements ModelZooTraining {
 		return canceled;
 	}
 
+	public boolean isStopped() {
+		return stopTraining;
+	}
+
 	public void addCallbackOnCancel(TrainingCanceledCallback callback) {
 		onTrainingCanceled.add(callback);
 	}
@@ -622,6 +633,16 @@ public class N2VTraining implements ModelZooTraining {
 
 	public Context context() {
 		return context;
+	}
+
+	@Override
+	public void saveModel(){
+		try {
+			outputHandler.exportLatestTrainedModel();
+			logService.info("Saved latest trained model to path: "+ outputHandler.getMostRecentModelDir().getAbsolutePath());
+		} catch (IOException e) {
+			logService.error("Could not save latest trained model at path: "+ outputHandler.getMostRecentModelDir().getAbsolutePath());
+		}
 	}
 
 	public static void main( final String... args ) throws Exception {

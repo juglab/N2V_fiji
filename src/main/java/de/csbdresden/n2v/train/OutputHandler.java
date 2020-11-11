@@ -204,6 +204,10 @@ public class OutputHandler {
 		return res;
 	}
 
+	public File getMostRecentModelDir() {
+		return mostRecentModelDir;
+	}
+
 	public float getCurrentLoss() {
 		return currentLoss;
 	}
