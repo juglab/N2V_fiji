@@ -37,6 +37,7 @@ import net.imglib2.view.Views;
 import org.scijava.Context;
 import org.scijava.display.Display;
 import org.scijava.display.DisplayService;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.ui.UIService;
 
@@ -51,6 +52,9 @@ public class PreviewHandler {
 	@Parameter
 	private OpService opService;
 
+	@Parameter
+	private LogService logService;
+
 	private final int trainDimensions;
 	private RandomAccessibleInterval<FloatType> splitImage;
 	private List<RandomAccessibleInterval<FloatType>> historyImages;
@@ -63,15 +67,15 @@ public class PreviewHandler {
 		this.trainDimensions = trainDimensions;
 	}
 
-	public void update(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isHeadless) {
+	public void update(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isHeadless, boolean isStoppedOrCanceled) {
 		singleValidationInputImage = Views.hyperSlice(in, in.numDimensions()-2, 0);
 		singleValidationOutputImage = Views.hyperSlice(out, out.numDimensions()-2, 0);
-		if(!isHeadless) updateSplitImage(in, out);
+		if(!isHeadless) updateSplitImage(in, out, isStoppedOrCanceled);
 //		updateHistoryImage(out);
 	}
 
-	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
-		if (Thread.interrupted()) return;
+	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isStoppedOrCanceled) {
+		if (Thread.interrupted() || isStoppedOrCanceled) return;
 		if(splitImage == null) splitImage = opService.create().img(out);
 		LoopBuilder.setImages(out, splitImage).forEachPixel((outPx, splitPx) -> {
 			splitPx.set(outPx);
@@ -79,6 +83,7 @@ public class PreviewHandler {
 		if(trainDimensions == 2) updateSplitImage2D(in);
 		if(trainDimensions == 3) updateSplitImage3D(in);
 		Display<?> display = uiService.context().service(DisplayService.class).getDisplay("training preview");
+		logService.info("UPDATE SPLIT IMAGE " +display);
 		if(display == null) uiService.show("training preview", splitImage);
 		else display.update();
 	}
