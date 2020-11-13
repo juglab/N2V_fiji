@@ -145,7 +145,7 @@ public class TrainingProgress extends JPanel {
 		buttonsPanel.add( finishBtn, gbc );
 
 		gbc.gridx = 2;
-		saveModelBtn = new JButton( "Save Model" );
+		saveModelBtn = new JButton( "Export Model" );
 		saveModelBtn.addActionListener( e -> training.saveModel() );
 		saveModelBtn.setEnabled(false);
 		buttonsPanel.add( saveModelBtn, gbc );
@@ -211,6 +211,7 @@ public class TrainingProgress extends JPanel {
 	public void setTaskDone( final int task ) {
 		if(task == tasks.size()-1) {
 			cancelBtn.setEnabled(false);
+			saveModelBtn.setEnabled(false);
 			finishBtn.setText("Close");
 		}
 		tasks.get( currentTask ).taskDone = true;
