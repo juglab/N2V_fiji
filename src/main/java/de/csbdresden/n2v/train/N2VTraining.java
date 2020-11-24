@@ -6,13 +6,13 @@
  * %%
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -32,6 +32,8 @@ import de.csbdresden.n2v.ui.TrainingProgress;
 import de.csbdresden.n2v.util.N2VUtils;
 import io.scif.services.DatasetIOService;
 import net.imagej.ImageJ;
+import net.imagej.modelzoo.ModelZooArchive;
+import net.imagej.modelzoo.ModelZooService;
 import net.imagej.modelzoo.consumer.model.tensorflow.TensorFlowConverter;
 import net.imagej.ops.OpService;
 import net.imagej.tensorflow.TensorFlowService;
@@ -87,6 +89,9 @@ public class N2VTraining implements ModelZooTraining {
 	private StatusService statusService;
 
 	@Parameter
+	private ModelZooService modelZooService;
+
+	@Parameter
 	Context context;
 
 	static final String tensorXOpName = "input";
@@ -122,23 +127,14 @@ public class N2VTraining implements ModelZooTraining {
 	private N2VConfig config;
 	private int stepsFinished = 0;
 
-	public static String getOutputName() {
-		return tensorYOpName;
-	}
-
-	public static String getInputName() {
-		return tensorXOpName;
-	}
-
 	public interface TrainingCallback {
-
 		void accept(N2VTraining training);
-
 	}
-	public interface TrainingCanceledCallback {
 
+	public interface TrainingCanceledCallback {
 		void accept();
 	}
+
 	public N2VTraining(Context context) {
 		context.inject(this);
 	}
@@ -181,9 +177,11 @@ public class N2VTraining implements ModelZooTraining {
 
 
 	}
+
 	private boolean headless() {
 		return uiService.isHeadless();
 	}
+
 	public void train() throws ExecutionException {
 
 		if (noValidationData()) return;
@@ -294,7 +292,6 @@ public class N2VTraining implements ModelZooTraining {
 				dialog.setTaskDone( 0 );
 				dialog.setTaskStart( 1 );
 			}
-
 			RemainingTimeEstimator remainingTimeEstimator = new RemainingTimeEstimator();
 			remainingTimeEstimator.setNumSteps(config().getNumEpochs());
 
@@ -302,7 +299,7 @@ public class N2VTraining implements ModelZooTraining {
 			previewHandler = new PreviewHandler(context, config().getTrainDimensions());
 			if(!headless()) {
 				RandomAccessibleInterval<FloatType> denormalized = denormalize(validation_data.get(0).getFirst());
-				previewHandler.update(denormalized, denormalized, headless());
+				previewHandler.update(denormalized, denormalized, headless(), isStopped() || isCanceled());
 			}
 
 			for (int i = 0; i < config().getNumEpochs(); i++) {
@@ -342,20 +339,28 @@ public class N2VTraining implements ModelZooTraining {
 
 				}
 
+				if (!headless()) {
+					dialog.enableModelSaving();
+				}
+
 				if (Thread.interrupted() || isCanceled()) {
 					tensorWeights.close();
 					return;
 				}
 				training_data.on_epoch_end();
-				float validationLoss = validate(sess, validation_data, tensorWeights);
-				if (Thread.interrupted() || isCanceled()) {
-					tensorWeights.close();
-					return;
+
+				if (!isCanceled() || !isStopped()) {
+					float validationLoss = validate(sess, validation_data, tensorWeights);
+					if (Thread.interrupted() || isCanceled()) {
+						tensorWeights.close();
+						return;
+					}
+					outputHandler.saveCheckpoint(sess, previewHandler.getExampleInput(), previewHandler.getExampleOutput());
+					outputHandler.setCurrentValidationLoss(validationLoss);
+					if (!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
+					onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
 				}
-				outputHandler.saveCheckpoint(sess, previewHandler.getExampleInput(), previewHandler.getExampleOutput());
-				outputHandler.setCurrentValidationLoss(validationLoss);
-				if(!headless()) dialog.updateTrainingChart(i + 1, losses, validationLoss);
-				onEpochDoneCallbacks.forEach(callback -> callback.accept(this));
+
 			}
 
 			tensorWeights.close();
@@ -521,7 +526,7 @@ public class N2VTraining implements ModelZooTraining {
 				Tensor outputTensor = fetchedTensors.get(3);
 				RandomAccessibleInterval<FloatType> output = TensorFlowConverter.tensorToImage(outputTensor, getMapping());
 				previewHandler.update(
-						denormalize(item.getFirst()), denormalize(output), headless());
+						denormalize(item.getFirst()), denormalize(output), headless(), isStopped() || isCanceled());
 //			updateHistoryImage(output);
 			}
 			fetchedTensors.forEach(Tensor::close);
@@ -617,6 +622,10 @@ public class N2VTraining implements ModelZooTraining {
 		return canceled;
 	}
 
+	public boolean isStopped() {
+		return stopTraining;
+	}
+
 	public void addCallbackOnCancel(TrainingCanceledCallback callback) {
 		onTrainingCanceled.add(callback);
 	}
@@ -631,6 +640,26 @@ public class N2VTraining implements ModelZooTraining {
 	}
 
 	public static void main( final String... args ) throws Exception {
+	@Override
+	public void saveModel() {
+		try {
+			File latestModel = this.output().exportLatestTrainedModel();
+			ModelZooArchive latestTrainedModel = modelZooService.io().open(latestModel);
+			uiService.show("Export current latest Model", latestTrainedModel);
+		} catch (IOException e) {
+			logService.error(e);
+		}
+		logService.info("Saved latest trained model to path: " + outputHandler.getMostRecentModelDir().getAbsolutePath());
+	}
+
+	public static String getOutputName() {
+		return predictionTargetOpName;
+	}
+
+	public static String getInputName() {
+		return tensorXOpName;
+	}
+
 
 		final ImageJ ij = new ImageJ();
 
