@@ -44,6 +44,7 @@ import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.ui.UIService;
 import org.scijava.widget.NumberWidget;
 
 import java.io.File;
@@ -101,6 +102,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 
 	@Parameter
 	private ModelZooService modelZooService;
+
+	@Parameter
+	private UIService uiService;
 
 	private boolean canceled;
 	private ExecutorService pool;
@@ -175,9 +179,9 @@ public class N2VTrainCommand implements Command, Cancelable {
 	}
 
 	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
-		latestTrainedModel = modelZooService.open(savedModel);
+		latestTrainedModel = modelZooService.io().open(savedModel);
 		savedModel = training.output().exportBestTrainedModel();
-		bestTrainedModel = modelZooService.open(savedModel);
+		bestTrainedModel = modelZooService.io().open(savedModel);
 	}
 
 	@Override

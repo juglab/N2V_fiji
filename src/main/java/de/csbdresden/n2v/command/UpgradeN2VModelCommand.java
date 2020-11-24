@@ -28,11 +28,10 @@
  */
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VModelSpecification;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
-import net.imagej.modelzoo.specification.ModelSpecification;
+import io.bioimage.specification.ModelSpecification;
 import org.scijava.Context;
 import org.scijava.ItemIO;
 import org.scijava.command.Command;
@@ -83,7 +82,7 @@ public class UpgradeN2VModelCommand implements Command {
 	ModelZooArchive tryUpgrade(File modelFile, File destinationFolder, String destinationFileName) {
 		ModelZooArchive model = null;
 		try {
-			model = modelZooService.open(modelFile);
+			model = modelZooService.io().open(modelFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -106,27 +105,20 @@ public class UpgradeN2VModelCommand implements Command {
 
 	private ModelZooArchive upgrade(ModelZooArchive model, File destinationFolder, String destinationFileName) throws IOException {
 		ModelSpecification oldSpec = model.getSpecification();
-		File destination = new File(destinationFolder, destinationFileName + ".bioimage.io.zip");
+		File destination = new File(destinationFolder, destinationFileName + ".model.bioimage.io.zip");
 		if (destination.getAbsolutePath().equals(getAbsolutePath(model.getLocation()))) {
 			logService.error("Destination file cannot be the same as the deprecated model ZIP file");
 			return model;
 		}
 		Files.copy(new File(model.getLocation().getURI()).toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		N2VModelSpecification newSpec = new N2VModelSpecification();
-		newSpec.setMeta();
-		newSpec.setInputsOutputs(new N2VConfig());
-		newSpec.setName(oldSpec.getName());
-		newSpec.setDescription(oldSpec.getDescription());
-		newSpec.setAuthors(oldSpec.getAuthors());
-		newSpec.setTags(oldSpec.getTags());
-		newSpec.getPredictionPreprocessing().addAll(oldSpec.getPredictionPreprocessing());
-		newSpec.getPredictionPostprocessing().addAll(oldSpec.getPredictionPostprocessing());
+		newSpec.read(oldSpec);
 		try (FileSystem fileSystem = FileSystems.newFileSystem(destination.toPath(), null)) {
 			Path specPath = fileSystem.getPath(oldSpec.getModelFileName());
 			Files.delete(specPath);
 			newSpec.write(fileSystem.getPath(newSpec.getModelFileName()));
 		}
-		return modelZooService.open(destination);
+		return modelZooService.io().open(destination);
 	}
 
 	private String getAbsolutePath(Location source) {

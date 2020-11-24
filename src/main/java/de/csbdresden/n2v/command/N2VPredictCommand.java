@@ -28,18 +28,24 @@
  */
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.modelzoo.ModelZooArchive;
-import net.imagej.modelzoo.consumer.commands.DefaultModelZooPredictionCommand;
+import net.imagej.modelzoo.consumer.DefaultModelZooPrediction;
+import net.imagej.modelzoo.consumer.commands.DefaultSingleImagePredictionCommand;
 import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
+import org.scijava.ItemIO;
+import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
 
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
-public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPredictionCommand {
+public class N2VPredictCommand <T extends RealType<T>> extends DefaultSingleImagePredictionCommand {
+
+	@Parameter(type = ItemIO.OUTPUT)
+	private RandomAccessibleInterval<T> output;
 
 	@Override
 	public void run() {
@@ -49,12 +55,13 @@ public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPr
 			e.printStackTrace();
 			return;
 		}
-		setPrediction(new N2VPrediction(getContext()));
+		setPrediction(new DefaultModelZooPrediction(getContext()));
 		super.run();
+		output = (RandomAccessibleInterval<T>) getPrediction().getOutputs().values().iterator().next();
 	}
 
 	private void validateTrainedModel(File trainedModel) throws IOException {
-		ModelZooArchive model = modelZooService().open(trainedModel);
+		ModelZooArchive model = modelZooService().io().open(trainedModel);
 		if(model.getSpecification().getFormatVersion().equals("0.1.0")) {
 			log().error("Deprecated model format - please call Plugins > CSBDeep > N2V > Upgrade N2V model.");
 			return;

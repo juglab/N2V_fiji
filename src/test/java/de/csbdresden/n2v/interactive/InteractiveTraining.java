@@ -38,12 +38,14 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 public class InteractiveTraining {
-		public static void main(String...args) throws ExecutionException {
+		public static void main(String...args) throws ExecutionException, IOException {
 			ImageJ ij = new ImageJ();
 			ij.launch();
 			Img<FloatType> blackImg = ij.op().create().img(new FinalDimensions(32, 32), new FloatType());
@@ -78,5 +80,8 @@ public class InteractiveTraining {
 			n2v.input().addTrainingData(stack);
 			n2v.input().addValidationData(stack);
 			n2v.train();
+			File modelFile = n2v.output().exportLatestTrainedModel();
+			Object model = ij.io().open(modelFile.getAbsolutePath());
+			ij.ui().show(model);
 		}
 	}

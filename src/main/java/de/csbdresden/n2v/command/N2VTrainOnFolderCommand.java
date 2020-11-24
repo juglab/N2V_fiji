@@ -125,9 +125,9 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	}
 
 	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
-		latestTrainedModel = modelZooService.open(savedModel);
+		latestTrainedModel = modelZooService.io().open(savedModel);
 		savedModel = training.output().exportBestTrainedModel();
-		bestTrainedModel = modelZooService.open(savedModel);
+		bestTrainedModel = modelZooService.io().open(savedModel);
 	}
 
 	@Override

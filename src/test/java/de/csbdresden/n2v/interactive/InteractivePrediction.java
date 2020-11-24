@@ -31,11 +31,14 @@ package de.csbdresden.n2v.interactive;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
+import net.imagej.modelzoo.consumer.model.prediction.PredictionOutput;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import org.junit.After;
 import org.junit.Test;
 import org.scijava.log.LogLevel;
+
+import java.util.Map;
 
 public class InteractivePrediction {
 	private ImageJ ij;
@@ -50,19 +53,21 @@ public class InteractivePrediction {
 
 		ij = new ImageJ();
 		ij.launch();
-		ij.log().setLevel(LogLevel.DEBUG);
+//		ij.log().setLevel(LogLevel.DEBUG);
 
 		// resource paths
-		String modelPath = getClass().getResource("/n2v-dummy.bioimage.io.zip").getPath();
+		String modelPath = getClass().getResource("/format-0.2.0-csbdeep.bioimage.io.zip").getPath();
 		String imgPath = getClass().getResource("/blobs.tif").getPath();
 
-		ModelZooArchive model = ij.get(ModelZooService.class).open(modelPath);
+		ModelZooArchive model = ij.get(ModelZooService.class).io().open(modelPath);
 		ij.ui().show(model);
 
 		Img img = (Img) ij.io().open(imgPath);
 
-		RandomAccessibleInterval output = ij.get(ModelZooService.class).predict(model, img, "XYB");
-		ij.ui().show(output);
+		PredictionOutput outputs = ij.get(ModelZooService.class).predict(model, img, "XYB");
+		outputs.asMap().forEach((name, output) -> {
+			ij.ui().show(name, output);
+		});
 
 	}
 

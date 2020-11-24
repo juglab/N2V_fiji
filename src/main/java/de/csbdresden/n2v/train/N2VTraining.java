@@ -28,7 +28,6 @@
  */
 package de.csbdresden.n2v.train;
 
-import de.csbdresden.n2v.predict.N2VPrediction;
 import de.csbdresden.n2v.ui.TrainingProgress;
 import de.csbdresden.n2v.util.N2VUtils;
 import io.scif.services.DatasetIOService;
@@ -50,7 +49,6 @@ import org.scijava.thread.DefaultThreadService;
 import org.scijava.ui.DialogPrompt;
 import org.scijava.ui.UIService;
 import org.tensorflow.Graph;
-import org.tensorflow.Operation;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
@@ -106,7 +104,7 @@ public class N2VTraining implements ModelZooTraining {
 
 	private TrainingProgress dialog;
 	private PreviewHandler previewHandler;
-	private OutputHandler outputHandler;
+	private N2VOutputHandler outputHandler;
 	private InputHandler inputHandler;
 
 	private boolean stopTraining = false;
@@ -123,6 +121,14 @@ public class N2VTraining implements ModelZooTraining {
 	private Session session;
 	private N2VConfig config;
 	private int stepsFinished = 0;
+
+	public static String getOutputName() {
+		return tensorYOpName;
+	}
+
+	public static String getInputName() {
+		return tensorXOpName;
+	}
 
 	public interface TrainingCallback {
 
@@ -210,8 +216,8 @@ public class N2VTraining implements ModelZooTraining {
 	}
 
 	private void mainThread() {
-		outputHandler = new OutputHandler(config, this, context);
-		addCallbackOnEpochDone(outputHandler::copyBestModel);
+		outputHandler = new N2VOutputHandler(config, this, context);
+		addCallbackOnEpochDone(training -> outputHandler.copyBestModel());
 
 		logService.info( "Create session.." );
 		if ( !headless() ) dialog.setCurrentTaskMessage( "Creating session" );
@@ -543,7 +549,7 @@ public class N2VTraining implements ModelZooTraining {
 		outputHandler.setCurrentLearningRate(newLR);
 	}
 
-	private static void logStatusInConsole(int step, int stepTotal, OutputHandler outputHandler) {
+	private static void logStatusInConsole(int step, int stepTotal, N2VOutputHandler outputHandler) {
 		int maxBareSize = 10; // 10unit for 100%
 		int remainProcent = ( ( 100 * step ) / stepTotal ) / maxBareSize;
 		char defaultChar = '-';
@@ -574,7 +580,7 @@ public class N2VTraining implements ModelZooTraining {
 		return inputHandler;
 	}
 
-	public OutputHandler output() {
+	public N2VOutputHandler output() {
 		return outputHandler;
 	}
 

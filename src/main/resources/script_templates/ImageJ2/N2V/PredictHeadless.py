@@ -7,12 +7,12 @@
 from net.imagej.modelzoo.consumer import ModelZooPredictionOptions
 
 # resource paths
-modelPath = "/PATH/TO/MODEL.bioimage.io.zip"
+modelPath = "/PATH/TO/MODEL.bioimage.io.model.zip"
 inputPath = "/PATH/TO/INPUT.tif"
 outputPath = "/PATH/TO/OUTPUT.tif"
 
 # open model
-model = modelZooService.open(modelPath)
+model = modelZooService.io().open(modelPath)
 # uncomment next line to display the model
 # ui.show("model", model)
 
@@ -22,9 +22,9 @@ img = io.open(inputPath)
 # ui.show("input", img)
 
 # Define the axes of the image.
-# In this case, the third dimension B will be handled as a batch dimension.
+# In this case, the third dimension b will be handled as a batch dimension.
 # This means each slice in this dimension can be processed individually.
-axes = "XYB"
+axes = "xyb"
 
 # create prediction options
 options = ModelZooPredictionOptions.options()
