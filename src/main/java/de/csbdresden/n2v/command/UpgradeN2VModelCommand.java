@@ -29,6 +29,7 @@
 package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.train.N2VModelSpecification;
+import io.bioimage.specification.io.SpecificationWriter;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
 import io.bioimage.specification.ModelSpecification;
@@ -42,11 +43,15 @@ import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.StandardCopyOption;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
 
 import static org.scijava.widget.FileWidget.DIRECTORY_STYLE;
 
@@ -114,9 +119,12 @@ public class UpgradeN2VModelCommand implements Command {
 		N2VModelSpecification newSpec = new N2VModelSpecification();
 		newSpec.read(oldSpec);
 		try (FileSystem fileSystem = FileSystems.newFileSystem(destination.toPath(), null)) {
-			Path specPath = fileSystem.getPath(oldSpec.getModelFileName());
-			Files.delete(specPath);
-			newSpec.write(fileSystem.getPath(newSpec.getModelFileName()));
+			Path specPath = fileSystem.getPath(SpecificationWriter.getModelFileName());
+			if(Files.exists(specPath)) Files.delete(specPath);
+			// older models had a n2v.model.yaml file, delete them too
+			Path oldSpecPath = fileSystem.getPath("n2v.model.yaml");
+			if(Files.exists(oldSpecPath)) Files.delete(oldSpecPath);
+			SpecificationWriter.write(newSpec, fileSystem.getPath(SpecificationWriter.getModelFileName()));
 		}
 		return modelZooService.io().open(destination);
 	}
