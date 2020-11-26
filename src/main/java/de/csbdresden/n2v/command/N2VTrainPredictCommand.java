@@ -88,9 +88,6 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 //	@Parameter(required = false, label = "Pretrained model file (.zip)")
 //	private File pretrainedNetwork;
 
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String advancedLabel = "<html><br/><span style='font-weight: normal'>Advanced options</span></html>";
-
 	@Parameter(label = "Number of epochs")
 	private int numEpochs = 300;
 
