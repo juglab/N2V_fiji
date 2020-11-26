@@ -41,8 +41,6 @@ import io.bioimage.specification.transformation.ScaleLinearTransformation;
 import io.bioimage.specification.transformation.ZeroMeanUnitVarianceTransformation;
 import io.bioimage.specification.weights.TensorFlowSavedModelBundleSpecification;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -71,11 +69,6 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 	private final static List modelInputDataRange = Arrays.asList("-inf", "inf");
 	private final static List modelOutputDataRange = Arrays.asList("-inf", "inf");
 	private final static String modelOutputName = N2VTraining.predictionTargetOpName;
-
-
-	void writeModelConfigFile(N2VConfig config, N2VOutputHandler outputHandler, File targetDirectory, int stepsFinished) throws IOException {
-		super.write(targetDirectory);
-	}
 
 	void update(N2VConfig config, N2VOutputHandler outputHandler, int stepsFinished) {
 		setMeta(outputHandler);
