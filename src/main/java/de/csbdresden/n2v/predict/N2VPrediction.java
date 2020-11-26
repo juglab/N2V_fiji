@@ -31,6 +31,7 @@ package de.csbdresden.n2v.predict;
 import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.modelzoo.consumer.AbstractModelZooPrediction;
 import net.imagej.modelzoo.consumer.ModelZooPrediction;
+import net.imagej.modelzoo.consumer.SingleImagePrediction;
 import net.imagej.modelzoo.consumer.model.ModelZooModel;
 import net.imagej.modelzoo.consumer.model.prediction.ImageInput;
 import net.imagej.modelzoo.consumer.model.prediction.ImageOutput;
@@ -41,7 +42,7 @@ import org.scijava.Context;
 import org.scijava.plugin.Plugin;
 
 @Plugin(type = ModelZooPrediction.class, name = "n2v")
-public class N2VPrediction extends AbstractModelZooPrediction<ImageInput<?>, ImageOutput<?>> {
+public class N2VPrediction extends AbstractModelZooPrediction<ImageInput<?>, ImageOutput<?>> implements SingleImagePrediction<ImageOutput<?>> {
 
 	public N2VPrediction() {
 	}

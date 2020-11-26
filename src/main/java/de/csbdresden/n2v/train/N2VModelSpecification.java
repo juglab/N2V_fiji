@@ -63,6 +63,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 	private final static String citationText = "Krull, A. and Buchholz, T. and Jug, F. Noise2void - learning denoising from single noisy images.\n" +
 			"Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (2019)";
 	private final static String doiText = "arXiv:1811.10980";
+	private final static String source = "n2v";
 	private final static List tags = Arrays.asList("denoising", "unet2d");
 	private final static String modelTrainingSource = N2VTraining.class.getCanonicalName();
 	private final static String modelInputName = N2VTraining.tensorXOpName;
@@ -163,6 +164,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		citation.setDOIText(doiText);
 		addCitation(citation);
 		setTags(tags);
+		setSource(source);
 		setSampleInputs(outputHandler.getSampleInputNames());
 		setSampleOutputs(outputHandler.getSampleOutputNames());
 	}

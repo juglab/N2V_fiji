@@ -28,11 +28,14 @@
  */
 package de.csbdresden.n2v.command;
 
+import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.consumer.DefaultModelZooPrediction;
+import net.imagej.modelzoo.consumer.commands.AbstractSingleImagePredictionCommand;
 import net.imagej.modelzoo.consumer.commands.DefaultSingleImagePredictionCommand;
 import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import org.scijava.ItemIO;
 import org.scijava.plugin.Parameter;
@@ -42,7 +45,7 @@ import java.io.File;
 import java.io.IOException;
 
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
-public class N2VPredictCommand <T extends RealType<T>> extends DefaultSingleImagePredictionCommand {
+public class N2VPredictCommand <T extends RealType<T> & NativeType<T>> extends AbstractSingleImagePredictionCommand<T, N2VPrediction> {
 
 	@Parameter(type = ItemIO.OUTPUT)
 	private RandomAccessibleInterval<T> output;
@@ -55,9 +58,17 @@ public class N2VPredictCommand <T extends RealType<T>> extends DefaultSingleImag
 			e.printStackTrace();
 			return;
 		}
-		setPrediction(new DefaultModelZooPrediction(getContext()));
 		super.run();
-		output = (RandomAccessibleInterval<T>) getPrediction().getOutputs().values().iterator().next();
+	}
+
+	@Override
+	protected N2VPrediction createPrediction() {
+		return new N2VPrediction(getContext());
+	}
+
+	@Override
+	protected void createOutput(N2VPrediction prediction) {
+		output = (RandomAccessibleInterval<T>) prediction.getOutput().getImage();
 	}
 
 	private void validateTrainedModel(File trainedModel) throws IOException {
@@ -74,7 +85,7 @@ public class N2VPredictCommand <T extends RealType<T>> extends DefaultSingleImag
 	private boolean isMultiChannel() {
 		int channelIndex = getAxes().indexOf("C");
 		if(channelIndex < 0) return false;
-		if(getInput().numDimensions() <= channelIndex) return false;
-		return getInput().dimension(channelIndex) > 1;
+		if(getPrediction().getInput().getImage().numDimensions() <= channelIndex) return false;
+		return getPrediction().getInput().getImage().dimension(channelIndex) > 1;
 	}
 }
