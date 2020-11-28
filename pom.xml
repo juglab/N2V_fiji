@@ -11,7 +11,7 @@
 
 	<groupId>de.csbdresden</groupId>
 	<artifactId>n2v</artifactId>
-	<version>0.8.2-SNAPSHOT</version>
+	<version>0.8.3-SNAPSHOT</version>
 
 	<name>N2V plugin</name>
 	<description>N2V plugin</description>
