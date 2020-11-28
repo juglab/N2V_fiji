@@ -28,11 +28,11 @@
  */
 package de.csbdresden.n2v.command;
 
-import de.csbdresden.n2v.predict.N2VPrediction;
 import de.csbdresden.n2v.train.N2VConfig;
 import de.csbdresden.n2v.train.N2VTraining;
 import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.ModelZooService;
+import net.imagej.modelzoo.consumer.DefaultModelZooPrediction;
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.FloatType;
@@ -88,9 +88,6 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 //	@Parameter(required = false, label = "Pretrained model file (.zip)")
 //	private File pretrainedNetwork;
 
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String advancedLabel = "<html><br/><span style='font-weight: normal'>Advanced options</span></html>";
-
 	@Parameter(label = "Number of epochs")
 	private int numEpochs = 300;
 
@@ -107,7 +104,7 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 	private int neighborhoodRadius = 5;
 
 	@Parameter( type = ItemIO.OUTPUT )
-	private RandomAccessibleInterval< FloatType > output;
+	private RandomAccessibleInterval<?> output;
 
 	@Parameter(type = ItemIO.OUTPUT, label = "model from last training step")
 	private ModelZooArchive latestTrainedModel;
@@ -204,10 +201,12 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 
 		if(latestTrainedModel == null) return;
 
-		N2VPrediction prediction = new N2VPrediction(context);
+		DefaultModelZooPrediction prediction = new DefaultModelZooPrediction(context);
 		prediction.setTrainedModel(latestTrainedModel);
 		try {
-			this.output = prediction.predict(this.prediction, axes);
+			prediction.setInput(this.prediction, axes);
+			prediction.run();
+			this.output = (RandomAccessibleInterval<?>) prediction.getOutputs().get(prediction.getTrainedModel().getSpecification().getOutputs().get(0).getName());
 		} catch (Exception e) {
 			e.printStackTrace();
 			n2v.getDialog().dispose();
@@ -218,9 +217,9 @@ public class N2VTrainPredictCommand implements Command, Cancelable {
 	}
 
 	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
-		latestTrainedModel = modelZooService.open(savedModel);
+		latestTrainedModel = modelZooService.io().open(savedModel);
 		savedModel = training.output().exportBestTrainedModel();
-		bestTrainedModel = modelZooService.open(savedModel);
+		bestTrainedModel = modelZooService.io().open(savedModel);
 	}
 
 

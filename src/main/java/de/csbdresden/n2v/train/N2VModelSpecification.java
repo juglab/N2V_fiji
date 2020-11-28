@@ -28,21 +28,19 @@
  */
 package de.csbdresden.n2v.train;
 
-import de.csbdresden.n2v.predict.N2VPrediction;
-import net.imagej.modelzoo.specification.CitationSpecification;
-import net.imagej.modelzoo.specification.DefaultCitationSpecification;
-import net.imagej.modelzoo.specification.DefaultInputNodeSpecification;
-import net.imagej.modelzoo.specification.DefaultModelSpecification;
-import net.imagej.modelzoo.specification.DefaultOutputNodeSpecification;
-import net.imagej.modelzoo.specification.DefaultTransformationSpecification;
-import net.imagej.modelzoo.specification.InputNodeSpecification;
-import net.imagej.modelzoo.specification.ModelSpecification;
-import net.imagej.modelzoo.specification.OutputNodeSpecification;
-import net.imagej.modelzoo.specification.TransformationSpecification;
-import net.imglib2.type.numeric.real.FloatType;
+import io.bioimage.specification.CitationSpecification;
+import io.bioimage.specification.DefaultCitationSpecification;
+import io.bioimage.specification.DefaultInputNodeSpecification;
+import io.bioimage.specification.DefaultModelSpecification;
+import io.bioimage.specification.DefaultOutputNodeSpecification;
+import io.bioimage.specification.InputNodeSpecification;
+import io.bioimage.specification.OutputNodeSpecification;
+import io.bioimage.specification.WeightsSpecification;
+import io.bioimage.specification.transformation.ImageTransformation;
+import io.bioimage.specification.transformation.ScaleLinearTransformation;
+import io.bioimage.specification.transformation.ZeroMeanUnitVarianceTransformation;
+import io.bioimage.specification.weights.TensorFlowSavedModelBundleSpecification;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -56,47 +54,33 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 	private final static String idTrainingKwargsNumEpochs = "numEpochs";
 	private final static String idTrainingKwargsNumStepsPerEpoch = "numStepsPerEpoch";
 	private final static String idTrainingKwargsBatchSize = "batchSize";
-	private final static String idTrainingKwargsBatchDimLength = "batchDimLength";
 	private final static String idTrainingKwargsPatchShape = "patchShape";
 	private final static String idTrainingKwargsNeighborhoodRadius = "neighborhoodRadius";
 	private final static String idTrainingKwargsStepsFinished = "stepsFinished";
-	private final static String idMean = "mean";
-	private final static String idStdDev = "stdDev";
 
 	private final static String citationText = "Krull, A. and Buchholz, T. and Jug, F. Noise2void - learning denoising from single noisy images.\n" +
 			"Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (2019)";
 	private final static String doiText = "arXiv:1811.10980";
+	private final static String source = "n2v";
 	private final static List tags = Arrays.asList("denoising", "unet2d");
-	private final static String modelSource = "n2v";
 	private final static String modelTrainingSource = N2VTraining.class.getCanonicalName();
 	private final static String modelInputName = N2VTraining.tensorXOpName;
 	private final static String modelDataType = "float32";
 	private final static List modelInputDataRange = Arrays.asList("-inf", "inf");
 	private final static List modelOutputDataRange = Arrays.asList("-inf", "inf");
 	private final static String modelOutputName = N2VTraining.predictionTargetOpName;
-	private final static String modelPreprocessing = N2VPrediction.class.getCanonicalName() + "::preprocess";
-	private final static String modelPostprocessing = N2VPrediction.class.getCanonicalName() + "::postprocess";
 
-	void writeModelConfigFile(N2VConfig config, OutputHandler outputHandler, File targetDirectory, int stepsFinished) throws IOException {
-		setMeta();
-		setInputsOutputs(config);
+	void update(N2VConfig config, N2VOutputHandler outputHandler, int stepsFinished) {
+		setMeta(outputHandler);
+		setInputsOutputs(config, outputHandler);
 		setTraining(config, stepsFinished);
-		setPrediction(outputHandler);
-		super.write(targetDirectory);
+		setWeights(outputHandler);
 	}
 
-	private void setPrediction(OutputHandler outputHandler) {
-		TransformationSpecification preprocessing = new DefaultTransformationSpecification();
-		preprocessing.setSpec(modelPreprocessing);
-		Map<String, Object> normalizeArgs = new LinkedHashMap<>();
-		normalizeArgs.put(idMean, Collections.singletonList(outputHandler.getMean().get()));
-		normalizeArgs.put(idStdDev, Collections.singletonList(outputHandler.getStdDev().get()));
-		preprocessing.setKwargs(new LinkedHashMap<>(normalizeArgs));
-		addPredictionPreprocessing(preprocessing);
-		TransformationSpecification postprocessing = new DefaultTransformationSpecification();
-		postprocessing.setSpec(modelPostprocessing);
-		postprocessing.setKwargs(new LinkedHashMap<>(normalizeArgs));
-		addPredictionPostprocessing(postprocessing);
+	private void setWeights(N2VOutputHandler outputHandler) {
+		WeightsSpecification weights = new TensorFlowSavedModelBundleSpecification();
+		weights.setSource(outputHandler.getSavedModelBundlePackage());
+		addWeights(weights);
 	}
 
 	private void setTraining(N2VConfig config, int stepsFinished) {
@@ -113,7 +97,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		setTrainingKwargs(trainingKwargs);
 	}
 
-	public void setInputsOutputs(N2VConfig config) {
+	public void setInputsOutputs(N2VConfig config, N2VOutputHandler outputHandler) {
 		List<Integer> modelInputMin;
 		List<Integer> modelInputStep;
 		List<Integer> modelInputHalo;
@@ -145,6 +129,11 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		inputNode.setHalo(modelInputHalo);
 		inputNode.setShapeMin(modelInputMin);
 		inputNode.setShapeStep(modelInputStep);
+		ZeroMeanUnitVarianceTransformation preprocessing = new ZeroMeanUnitVarianceTransformation();
+		preprocessing.setMode(ImageTransformation.Mode.FIXED);
+		preprocessing.setMean(outputHandler.getMean().get());
+		preprocessing.setStd(outputHandler.getStdDev().get());
+		inputNode.setPreprocessing(Collections.singletonList(preprocessing));
 		addInputNode(inputNode);
 		OutputNodeSpecification outputNode = new DefaultOutputNodeSpecification();
 		outputNode.setName(modelOutputName);
@@ -154,48 +143,23 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		outputNode.setShapeReferenceInput(modelInputName);
 		outputNode.setShapeScale(modelOutputScale);
 		outputNode.setShapeOffset(modelOutputOffset);
+		ScaleLinearTransformation postprocessing = new ScaleLinearTransformation();
+		postprocessing.setMode(ImageTransformation.Mode.FIXED);
+		postprocessing.setOffset(outputHandler.getMean().get());
+		postprocessing.setGain(outputHandler.getStdDev().get());
+		outputNode.setPostprocessing(Collections.singletonList(postprocessing));
 		addOutputNode(outputNode);
 	}
 
-	public void setMeta() {
+	public void setMeta(N2VOutputHandler outputHandler) {
 		CitationSpecification citation = new DefaultCitationSpecification();
 		citation.setCitationText(citationText);
 		citation.setDOIText(doiText);
 		addCitation(citation);
 		setTags(tags);
-		setSource(modelSource);
-	}
-
-
-	public static boolean setFromSpecification(N2VPrediction prediction, ModelSpecification specification) {
-		double mean = 0.0f;
-		double stdDev = 1.0f;
-
-		List<TransformationSpecification> predictionPreprocessing = specification.getPredictionPreprocessing();
-		if(predictionPreprocessing.size() > 0) {
-			Map<String, Object> kwargs = predictionPreprocessing.get(0).getKwargs();
-			if(kwargs != null) {
-				if(Double.class.isAssignableFrom(kwargs.get(idMean).getClass())) {
-					mean = (double) kwargs.get(idMean);
-				} else {
-					List<? extends Number> meanObj = (List<? extends Number>) kwargs.get(idMean);
-					if(meanObj != null && meanObj.size() > 0) mean = meanObj.get(0).doubleValue();
-				}
-				if(Double.class.isAssignableFrom(kwargs.get(idStdDev).getClass())) {
-					stdDev = (double) kwargs.get(idStdDev);
-				} else {
-					List<? extends Number> stdDevObj = (List<? extends Number>) kwargs.get(idStdDev);
-					if(stdDevObj != null && stdDevObj.size() > 0) stdDev = stdDevObj.get(0).doubleValue();
-				}
-			}
-		}
-
-		prediction.setMean(new FloatType((float) mean));
-		prediction.setStdDev(new FloatType((float) stdDev));
-		System.out.println("N2V prediction mean  : " + mean);
-		System.out.println("N2V prediction stdDev: " + stdDev);
-
-		return true;
+		setSource(source);
+		setSampleInputs(outputHandler.getSampleInputNames());
+		setSampleOutputs(outputHandler.getSampleOutputNames());
 	}
 
 }

@@ -30,16 +30,23 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.modelzoo.ModelZooArchive;
-import net.imagej.modelzoo.consumer.commands.DefaultModelZooPredictionCommand;
-import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
+import net.imagej.modelzoo.consumer.command.AbstractSingleImagePredictionCommand;
+import net.imagej.modelzoo.consumer.command.SingleImagePredictionCommand;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import org.scijava.ItemIO;
+import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
 
 @Plugin( type = SingleImagePredictionCommand.class, name = "n2v", menuPath = "Plugins>CSBDeep>N2V>N2V predict" )
-public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPredictionCommand {
+public class N2VPredictCommand <T extends RealType<T> & NativeType<T>> extends AbstractSingleImagePredictionCommand<T, N2VPrediction> {
+
+	@Parameter(type = ItemIO.OUTPUT)
+	private RandomAccessibleInterval<T> output;
 
 	@Override
 	public void run() {
@@ -49,12 +56,21 @@ public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPr
 			e.printStackTrace();
 			return;
 		}
-		setPrediction(new N2VPrediction(getContext()));
 		super.run();
 	}
 
+	@Override
+	protected N2VPrediction createPrediction() {
+		return new N2VPrediction(getContext());
+	}
+
+	@Override
+	protected void createOutput(N2VPrediction prediction) {
+		output = (RandomAccessibleInterval<T>) prediction.getOutput().getImage();
+	}
+
 	private void validateTrainedModel(File trainedModel) throws IOException {
-		ModelZooArchive model = modelZooService().open(trainedModel);
+		ModelZooArchive model = modelZooService().io().open(trainedModel);
 		if(model.getSpecification().getFormatVersion().equals("0.1.0")) {
 			log().error("Deprecated model format - please call Plugins > CSBDeep > N2V > Upgrade N2V model.");
 			return;
@@ -67,7 +83,7 @@ public class N2VPredictCommand <T extends RealType<T>> extends DefaultModelZooPr
 	private boolean isMultiChannel() {
 		int channelIndex = getAxes().indexOf("C");
 		if(channelIndex < 0) return false;
-		if(getInput().numDimensions() <= channelIndex) return false;
-		return getInput().dimension(channelIndex) > 1;
+		if(getPrediction().getInput().getImage().numDimensions() <= channelIndex) return false;
+		return getPrediction().getInput().getImage().dimension(channelIndex) > 1;
 	}
 }

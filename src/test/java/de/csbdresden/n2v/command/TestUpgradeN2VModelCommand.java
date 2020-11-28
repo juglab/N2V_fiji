@@ -28,15 +28,15 @@
  */
 package de.csbdresden.n2v.command;
 
-import com.google.common.io.Files;
 import net.imagej.ImageJ;
 import net.imagej.modelzoo.ModelZooArchive;
+import io.bioimage.specification.TransformationSpecification;
+import io.bioimage.specification.transformation.ZeroMeanUnitVarianceTransformation;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
-import java.net.URISyntaxException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -56,15 +56,16 @@ public class TestUpgradeN2VModelCommand {
 		ModelZooArchive model = upgrader.tryUpgrade(modelFile, destinationFolder, "tmp");
 		assertNotNull(model);
 		assertNotNull(model.getSpecification());
-		assertEquals("0.2.1-csbdeep", model.getSpecification().getFormatVersion());
-		assertNotNull(model.getSpecification().getPredictionPreprocessing());
-		assertEquals(1, model.getSpecification().getPredictionPreprocessing().size());
-		assertNotNull(model.getSpecification().getPredictionPreprocessing().get(0));
-		assertNotNull(model.getSpecification().getPredictionPreprocessing().get(0).getKwargs());
-		assertNotNull(model.getSpecification().getPredictionPreprocessing().get(0).getKwargs().get("mean"));
-		assertEquals(100, model.getSpecification().getPredictionPreprocessing().get(0).getKwargs().get("mean"));
-		assertNotNull(model.getSpecification().getPredictionPreprocessing().get(0).getKwargs().get("stdDev"));
-		assertEquals(200, model.getSpecification().getPredictionPreprocessing().get(0).getKwargs().get("stdDev"));
+		assertEquals("0.3.0", model.getSpecification().getFormatVersion());
+		assertNotNull(model.getSpecification().getInputs());
+		assertEquals(1, model.getSpecification().getInputs().size());
+		assertNotNull(model.getSpecification().getInputs().get(0).getPreprocessing());
+		assertEquals(1, model.getSpecification().getInputs().get(0).getPreprocessing().size());
+		TransformationSpecification preprocessing = model.getSpecification().getInputs().get(0).getPreprocessing().get(0);
+		assertNotNull(preprocessing);
+		assertEquals(ZeroMeanUnitVarianceTransformation.class, preprocessing.getClass());
+		assertEquals(100, ((ZeroMeanUnitVarianceTransformation)preprocessing).getMean());
+		assertEquals(200, ((ZeroMeanUnitVarianceTransformation)preprocessing).getStd());
 		ij.context().dispose();
 	}
 

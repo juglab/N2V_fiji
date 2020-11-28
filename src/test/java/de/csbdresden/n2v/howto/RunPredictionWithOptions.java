@@ -40,6 +40,8 @@ import org.scijava.io.IOService;
 import org.scijava.log.LogService;
 import org.scijava.ui.UIService;
 
+import java.util.Map;
+
 /**
  * How to run prediction headless and with specific options
  */
@@ -66,7 +68,7 @@ public class RunPredictionWithOptions {
 		String outputPath = "/media/random/cdc71243-1f7c-49d6-8b22-da102091386f/betaseg/output.tif";
 
 		// open model
-		ModelZooArchive model = modelZooService.open(modelPath);
+		ModelZooArchive model = modelZooService.io().open(modelPath);
 		// uncomment next line to display the model
 //		ui.show("model", model);
 
@@ -101,7 +103,9 @@ public class RunPredictionWithOptions {
 //		options.cacheDirectory("/disk/with/space/my_cache");
 
 		// Run prediction on input image.
-		RandomAccessibleInterval output = modelZooService.predict(model, img, axes, options);
+		Map outputs = modelZooService.predict(model, img, axes, options).asMap();
+
+		RandomAccessibleInterval output = (RandomAccessibleInterval) outputs.values().iterator().next();
 
 		// Uncomment next line to display the output image.
 //		ui.show("output", output);

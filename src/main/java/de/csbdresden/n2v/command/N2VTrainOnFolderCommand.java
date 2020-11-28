@@ -58,9 +58,6 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	@Parameter(label = "Use 3D model instead of 2D")
 	private boolean mode3D = false;
 
-	@Parameter(required = false, visibility = ItemVisibility.MESSAGE)
-	private String advancedLabel = "<html><br/><span style='font-weight: normal'>Advanced options</span></html>";
-
 	@Parameter(label = "Number of epochs")
 	private int numEpochs = 300;
 
@@ -125,9 +122,9 @@ public class N2VTrainOnFolderCommand implements Command, Cancelable {
 	}
 
 	private void openSavedModels(N2VTraining training, File savedModel) throws IOException {
-		latestTrainedModel = modelZooService.open(savedModel);
+		latestTrainedModel = modelZooService.io().open(savedModel);
 		savedModel = training.output().exportBestTrainedModel();
-		bestTrainedModel = modelZooService.open(savedModel);
+		bestTrainedModel = modelZooService.io().open(savedModel);
 	}
 
 	@Override

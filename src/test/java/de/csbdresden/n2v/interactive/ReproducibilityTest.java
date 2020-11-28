@@ -107,11 +107,9 @@ public class ReproducibilityTest<T extends RealType<T>> {
 
 	private void calculatePSNR(N2VTraining training) {
 		N2VPrediction prediction = new N2VPrediction(ij.context());
-		prediction.setMean(training.output().getMean());
-		prediction.setStdDev(training.output().getStdDev());
 		try {
 			File model = training.output().exportLatestTrainedModel();
-			prediction.setTrainedModel(training.context().service(ModelZooService.class).open(model));
+			prediction.setTrainedModel(training.context().service(ModelZooService.class).io().open(model));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -121,7 +119,7 @@ public class ReproducibilityTest<T extends RealType<T>> {
 		for (Pair<Img, Img> pair : testData) {
 			Img<T> networkInput = pair.getLeft();
 			Img<FloatType> input = ij.op().convert().float32(networkInput);
-			RandomAccessibleInterval<FloatType> output = null;
+			RandomAccessibleInterval<?> output = null;
 			try {
 				output = prediction.predict(TrainUtils.copy(input), "XY");
 			} catch (Exception e) {

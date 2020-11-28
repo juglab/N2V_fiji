@@ -32,6 +32,7 @@ import de.csbdresden.n2v.train.ModelZooTraining;
 import org.scijava.app.StatusService;
 import org.scijava.thread.ThreadService;
 
+import javax.swing.AbstractAction;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -49,6 +50,7 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -83,6 +85,7 @@ public class TrainingProgress extends JPanel {
 	private final JPanel taskContainer;
 	private final JFrame frame;
 	private final JButton finishBtn;
+	private final JButton saveModelBtn;
 	private final JButton cancelBtn;
 
 	private final SimpleAttributeSet red = new SimpleAttributeSet();
@@ -134,14 +137,24 @@ public class TrainingProgress extends JPanel {
 		gbc.gridx = 0;
 
 		cancelBtn = new JButton( "Cancel" );
-		cancelBtn.addActionListener(e -> training.cancel());
+		cancelBtn.addActionListener(e -> new Thread(training::cancel).start() );
 		buttonsPanel.add( cancelBtn, gbc );
 
 		gbc.gridx = 1;
 		finishBtn = new JButton( "Finish Training" );
-		finishBtn.addActionListener( e -> training.stopTraining() );
+		finishBtn.addActionListener( e -> new Thread(training::stopTraining).start() );
 		finishBtn.setEnabled(false);
 		buttonsPanel.add( finishBtn, gbc );
+
+		gbc.gridx = 2;
+		saveModelBtn = new JButton( "Export Model" );
+		saveModelBtn.addActionListener( e -> new Thread( () -> {
+			saveModelBtn.setEnabled(false);
+			training.saveModel();
+			saveModelBtn.setEnabled(true);
+		}).start() );
+		saveModelBtn.setEnabled(false);
+		buttonsPanel.add( saveModelBtn, gbc );
 
 		add( buttonsPanel, BorderLayout.SOUTH );
 
@@ -164,6 +177,10 @@ public class TrainingProgress extends JPanel {
 		} catch ( InterruptedException | InvocationTargetException e ) {
 			e.printStackTrace();
 		}
+	}
+
+	public void enableModelSaving(){
+		saveModelBtn.setEnabled(true);
 	}
 
 	public void addTask( final String title ) {
@@ -200,7 +217,13 @@ public class TrainingProgress extends JPanel {
 	public void setTaskDone( final int task ) {
 		if(task == tasks.size()-1) {
 			cancelBtn.setEnabled(false);
-			finishBtn.setText("Close");
+			saveModelBtn.setEnabled(false);
+			finishBtn.setAction(new AbstractAction("Close") {
+				@Override
+				public void actionPerformed(ActionEvent actionEvent) {
+					frame.dispose();
+				}
+			});
 		}
 		tasks.get( currentTask ).taskDone = true;
 		setTaskStatus( task, STATUS_DONE );
