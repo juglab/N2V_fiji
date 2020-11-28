@@ -348,8 +348,8 @@ public class N2VTraining implements ModelZooTraining {
 				}
 				training_data.on_epoch_end();
 
-				if (!isCanceled() || !isStopped()) {
-					float validationLoss = validate(sess, validation_data, tensorWeights);
+				if (!isCanceled() && !isStopped()) {
+					Float validationLoss = validate(sess, validation_data, tensorWeights);
 					if (Thread.interrupted() || isCanceled()) {
 						tensorWeights.close();
 						return;
@@ -483,14 +483,15 @@ public class N2VTraining implements ModelZooTraining {
 		return Tensors.create(weightsdata);
 	}
 
-	private float validate(Session sess, List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validationData, Tensor tensorWeights) {
+	private Float validate(Session sess, List<Pair<RandomAccessibleInterval<FloatType>, RandomAccessibleInterval<FloatType>>> validationData, Tensor tensorWeights) {
 
 		float avgLoss = 0;
 		float avgAbs = 0;
 		float avgMse = 0;
 
 		long validationBatches = validationData.size();
-		for (int i = 0; i < validationBatches; i++) {
+		int i;
+		for (i = 0; i < validationBatches; i++) {
 
 			if (Thread.interrupted() || isCanceled()) {
 				break;
@@ -532,12 +533,17 @@ public class N2VTraining implements ModelZooTraining {
 			tensorY.close();
 			tensorLearningPhase.close();
 		}
-		avgLoss /= (float) validationBatches;
-		avgAbs /= (float) validationBatches;
-		avgMse /= (float) validationBatches;
 
-		logService.info("\nValidation loss: " + avgLoss + " abs: " + avgAbs + " mse: " + avgMse);
-		return avgLoss;
+		if(!isCanceled()) {
+			avgLoss /= (float) i;
+			avgAbs /= (float) i;
+			avgMse /= (float) i;
+
+			logService.info("\nValidation loss: " + avgLoss + " abs: " + avgAbs + " mse: " + avgMse);
+			return avgLoss;
+		} else {
+			return null;
+		}
 	}
 
 	private RandomAccessibleInterval<FloatType> denormalize(RandomAccessibleInterval<FloatType> item) {
