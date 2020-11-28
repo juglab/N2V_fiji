@@ -100,7 +100,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 	public void setInputsOutputs(N2VConfig config, N2VOutputHandler outputHandler) {
 		List<Integer> modelInputMin;
 		List<Integer> modelInputStep;
-		List<Integer> modelInputHalo;
+		List<Integer> modelOutputHalo;
 		List<Float> modelOutputScale;
 		List<Integer> modelOutputOffset;
 		String modelNodeAxes;
@@ -110,14 +110,14 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 			modelNodeAxes = "byxc";
 			modelInputMin = Arrays.asList(1, min, min, 1);
 			modelInputStep = Arrays.asList(1, min, min, 0);
-			modelInputHalo = Arrays.asList(0, halo, halo, 0);
+			modelOutputHalo = Arrays.asList(0, halo, halo, 0);
 			modelOutputScale = Arrays.asList(1f, 1f, 1f, 1f);
 			modelOutputOffset = Arrays.asList(0, 0, 0, 0);
 		} else {
 			modelNodeAxes = "bzyxc";
 			modelInputMin = Arrays.asList(1, min, min, min, 1);
 			modelInputStep = Arrays.asList(1, min, min, min, 0);
-			modelInputHalo = Arrays.asList(0, halo, halo, halo, 0);
+			modelOutputHalo = Arrays.asList(0, halo, halo, halo, 0);
 			modelOutputScale = Arrays.asList(1f, 1f, 1f, 1f, 1f);
 			modelOutputOffset = Arrays.asList(0, 0, 0, 0, 0);
 		}
@@ -126,7 +126,6 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		inputNode.setAxes(modelNodeAxes);
 		inputNode.setDataType(modelDataType);
 		inputNode.setDataRange(modelInputDataRange);
-		inputNode.setHalo(modelInputHalo);
 		inputNode.setShapeMin(modelInputMin);
 		inputNode.setShapeStep(modelInputStep);
 		ZeroMeanUnitVarianceTransformation preprocessing = new ZeroMeanUnitVarianceTransformation();
@@ -139,6 +138,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		outputNode.setName(modelOutputName);
 		outputNode.setAxes(modelNodeAxes);
 		outputNode.setDataType(modelDataType);
+		outputNode.setHalo(modelOutputHalo);
 		outputNode.setDataRange(modelOutputDataRange);
 		outputNode.setShapeReferenceInput(modelInputName);
 		outputNode.setShapeScale(modelOutputScale);
