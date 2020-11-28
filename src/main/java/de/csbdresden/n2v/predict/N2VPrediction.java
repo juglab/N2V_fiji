@@ -29,6 +29,7 @@
 package de.csbdresden.n2v.predict;
 
 import de.csbdresden.n2v.train.N2VTraining;
+import net.imagej.modelzoo.ModelZooArchive;
 import net.imagej.modelzoo.consumer.AbstractModelZooPrediction;
 import net.imagej.modelzoo.consumer.ModelZooPrediction;
 import net.imagej.modelzoo.consumer.SingleImagePrediction;
@@ -61,5 +62,10 @@ public class N2VPrediction extends AbstractModelZooPrediction<ImageInput<?>, Ima
 		setInput(new ImageInput<>(N2VTraining.getInputName(), input, axes));
 		run();
 		return getOutput().getImage();
+	}
+
+	@Override
+	public boolean canRunSanityCheck(ModelZooArchive trainedModel) {
+		return true;
 	}
 }

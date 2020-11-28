@@ -30,10 +30,8 @@ package de.csbdresden.n2v.command;
 
 import de.csbdresden.n2v.predict.N2VPrediction;
 import net.imagej.modelzoo.ModelZooArchive;
-import net.imagej.modelzoo.consumer.DefaultModelZooPrediction;
-import net.imagej.modelzoo.consumer.commands.AbstractSingleImagePredictionCommand;
-import net.imagej.modelzoo.consumer.commands.DefaultSingleImagePredictionCommand;
-import net.imagej.modelzoo.consumer.commands.SingleImagePredictionCommand;
+import net.imagej.modelzoo.consumer.command.AbstractSingleImagePredictionCommand;
+import net.imagej.modelzoo.consumer.command.SingleImagePredictionCommand;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;

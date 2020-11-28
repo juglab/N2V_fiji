@@ -70,12 +70,12 @@ public class PreviewHandler {
 	public void update(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isHeadless, boolean isStoppedOrCanceled) {
 		singleValidationInputImage = Views.hyperSlice(in, in.numDimensions()-2, 0);
 		singleValidationOutputImage = Views.hyperSlice(out, out.numDimensions()-2, 0);
-		if(!isHeadless) updateSplitImage(in, out, isStoppedOrCanceled);
+		if(!isHeadless && !isStoppedOrCanceled) updateSplitImage(in, out);
 //		updateHistoryImage(out);
 	}
 
-	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out, boolean isStoppedOrCanceled) {
-		if (Thread.interrupted() || isStoppedOrCanceled) return;
+	private void updateSplitImage(RandomAccessibleInterval<FloatType> in, RandomAccessibleInterval<FloatType> out) {
+		if (Thread.interrupted()) return;
 		if(splitImage == null) splitImage = opService.create().img(out);
 		LoopBuilder.setImages(out, splitImage).forEachPixel((outPx, splitPx) -> {
 			splitPx.set(outPx);

@@ -301,14 +301,14 @@ public class N2VTraining implements ModelZooTraining {
 				previewHandler.update(denormalized, denormalized, headless(), isStopped() || isCanceled());
 			}
 
-			for (int i = 0; i < config().getNumEpochs(); i++) {
+			for (int i = 0; i < config().getNumEpochs() && !isStopped(); i++) {
 				remainingTimeEstimator.setCurrentStep(i);
 				String remainingTimeString = remainingTimeEstimator.getRemainingTimeString();
 				logService.info("Epoch " + (i + 1) + "/" + config().getNumEpochs() + " " + remainingTimeString);
 
 				List<Double> losses = new ArrayList<>(config().getStepsPerEpoch());
 
-				for (int j = 0; j < config().getStepsPerEpoch() && !stopTraining; j++) {
+				for (int j = 0; j < config().getStepsPerEpoch() && !isStopped(); j++) {
 
 					if (Thread.interrupted() || isCanceled()) {
 						tensorWeights.close();
@@ -330,7 +330,7 @@ public class N2VTraining implements ModelZooTraining {
 
 					losses.add((double) outputHandler.getCurrentLoss());
 					logStatusInConsole(j + 1, config().getStepsPerEpoch(), outputHandler);
-					if (!headless()) dialog.updateTrainingProgress(i + 1, j + 1);
+					if (!headless() && !isCanceled() && !isStopped()) dialog.updateTrainingProgress(i + 1, j + 1);
 
 					stepsFinished = config().getStepsPerEpoch() * i + j + 1;
 
