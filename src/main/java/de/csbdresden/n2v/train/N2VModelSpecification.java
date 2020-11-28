@@ -40,6 +40,7 @@ import io.bioimage.specification.transformation.ImageTransformation;
 import io.bioimage.specification.transformation.ScaleLinearTransformation;
 import io.bioimage.specification.transformation.ZeroMeanUnitVarianceTransformation;
 import io.bioimage.specification.weights.TensorFlowSavedModelBundleSpecification;
+import net.imagej.modelzoo.specification.ImageJModelSpecification;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +48,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class N2VModelSpecification extends DefaultModelSpecification {
+public class N2VModelSpecification extends ImageJModelSpecification {
 
 	private final static String idTrainingKwargsTrainDimensions = "trainDimensions";
 	private final static String idTrainingKwargsLearningRate = "learningRate";
@@ -84,7 +85,6 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 	}
 
 	private void setTraining(N2VConfig config, int stepsFinished) {
-		setTrainingSource(modelTrainingSource);
 		Map<String, Object> trainingKwargs = new LinkedHashMap<>();
 		trainingKwargs.put(idTrainingKwargsBatchSize, config.getTrainBatchSize());
 		trainingKwargs.put(idTrainingKwargsLearningRate, config.getLearningRate());
@@ -94,7 +94,7 @@ public class N2VModelSpecification extends DefaultModelSpecification {
 		trainingKwargs.put(idTrainingKwargsNumStepsPerEpoch, config.getStepsPerEpoch());
 		trainingKwargs.put(idTrainingKwargsPatchShape, config.getTrainPatchShape());
 		trainingKwargs.put(idTrainingKwargsStepsFinished, stepsFinished);
-		setTrainingKwargs(trainingKwargs);
+		setTrainingStats(modelTrainingSource, trainingKwargs);
 	}
 
 	public void setInputsOutputs(N2VConfig config, N2VOutputHandler outputHandler) {
