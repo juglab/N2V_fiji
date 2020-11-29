@@ -56,7 +56,7 @@ public class TestUpgradeN2VModelCommand {
 		ModelZooArchive model = upgrader.tryUpgrade(modelFile, destinationFolder, "tmp");
 		assertNotNull(model);
 		assertNotNull(model.getSpecification());
-		assertEquals("0.3.0", model.getSpecification().getFormatVersion());
+		assertEquals("0.2.1-csbdeep", model.getSpecification().getFormatVersion());
 		assertNotNull(model.getSpecification().getInputs());
 		assertEquals(1, model.getSpecification().getInputs().size());
 		assertNotNull(model.getSpecification().getInputs().get(0).getPreprocessing());

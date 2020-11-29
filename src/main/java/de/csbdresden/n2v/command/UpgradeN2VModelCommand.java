@@ -99,11 +99,7 @@ public class UpgradeN2VModelCommand implements Command {
 				e.printStackTrace();
 			}
 		} else {
-			if(oldSpec.getFormatVersion().equals("0.2.0-csbdeep")) {
-				logService.info("Model format is already the newest version.");
-			} else {
-				logService.error("Unknown model format version " + oldSpec.getFormatVersion());
-			}
+			logService.info("This command can only upgrade from version 0.1.0.");
 		}
 		return null;
 	}
@@ -118,7 +114,7 @@ public class UpgradeN2VModelCommand implements Command {
 		Files.copy(new File(model.getLocation().getURI()).toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		N2VModelSpecification newSpec = new N2VModelSpecification();
 		newSpec.read(oldSpec);
-		newSpec.setFormatVersion("0.2.0-csbdeep");
+		newSpec.setFormatVersion("0.2.1-csbdeep");
 		try (FileSystem fileSystem = FileSystems.newFileSystem(destination.toPath(), null)) {
 			Path specPath = fileSystem.getPath(SpecificationWriter.getModelFileName());
 			if(Files.exists(specPath)) Files.delete(specPath);
