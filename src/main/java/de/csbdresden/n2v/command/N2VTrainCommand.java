@@ -123,7 +123,7 @@ public class N2VTrainCommand implements Command, Cancelable {
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		} finally {
-			if(n2v != null) {
+			if(n2v != null && n2v.output() != null) {
 				n2v.output().dispose();
 			}
 		}
