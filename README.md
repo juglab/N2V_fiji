@@ -1,6 +1,6 @@
 [![](https://travis-ci.com/juglab/N2V_fiji.svg?branch=master)](https://travis-ci.com/juglab/N2V_fiji)
 
-# N2V training in Fiji
+# [N2V training in Fiji](https://imagej.net/N2V)
 Noise reduction (pixel wise independent) by training a CNN on single noisy images in Java.  
 
 ## How to use
@@ -23,7 +23,7 @@ export PATH=/usr/local/cuda/bin${PATH};export LD_LIBRARY_PATH=/usr/local/cuda/li
 ```
 
 ### GPU support (Windows)
-To set the CUDA environment variables in Windows, please follow the steps described on [this page](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#install-windows) (section 4.3.4).
+To set the CUDA environment variables in Windows, please follow the steps described on [this page](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#install-windows) (section 3.3.4).
 
 
 ## Plugin details 
