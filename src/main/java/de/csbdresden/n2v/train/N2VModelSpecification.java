@@ -31,7 +31,6 @@ package de.csbdresden.n2v.train;
 import io.bioimage.specification.CitationSpecification;
 import io.bioimage.specification.DefaultCitationSpecification;
 import io.bioimage.specification.DefaultInputNodeSpecification;
-import io.bioimage.specification.DefaultModelSpecification;
 import io.bioimage.specification.DefaultOutputNodeSpecification;
 import io.bioimage.specification.InputNodeSpecification;
 import io.bioimage.specification.OutputNodeSpecification;
@@ -81,7 +80,7 @@ public class N2VModelSpecification extends ImageJModelSpecification {
 	private void setWeights(N2VOutputHandler outputHandler) {
 		WeightsSpecification weights = new TensorFlowSavedModelBundleSpecification();
 		weights.setSource(outputHandler.getSavedModelBundlePackage());
-		addWeights(weights);
+		addWeights(TensorFlowSavedModelBundleSpecification.id, weights);
 	}
 
 	private void setTraining(N2VConfig config, int stepsFinished) {
@@ -162,4 +161,28 @@ public class N2VModelSpecification extends ImageJModelSpecification {
 		setSampleOutputs(outputHandler.getSampleOutputNames());
 	}
 
+	@Override
+	public String getFramework() {
+		return "tensorflow";
+	}
+
+	@Override
+	public String getLicense() {
+		return "BSD-3-Clause";
+	}
+
+	@Override
+	public String getSource(){
+		return "de.csbdresden.n2v.train.N2VTraining";
+	}
+
+	@Override
+	public String getType(){
+		return "model";
+	}
+
+	@Override
+	public String getVersion(){
+		return "0.1.0";
+	}
 }
